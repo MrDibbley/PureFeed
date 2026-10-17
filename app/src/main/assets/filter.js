@@ -64,6 +64,10 @@
   var lastCountsJson = '';
   var feedsAttempted = false;   // openFeeds() runs at most once per page load
 
+  // Cost counters, read with __fbm.stats() (chrome://inspect, soak tests). Cheap enough
+  // to leave on: two performance.now() calls per mutation batch.
+  var stats = { batches: 0, unitsTested: 0, totalMs: 0, maxBatchMs: 0, rescans: 0, rescanMs: 0 };
+
   // -------------------------------------------------------------------------
   // Text helpers
   // -------------------------------------------------------------------------
@@ -444,6 +448,7 @@
 
   /** Clears every mark and re-tests the whole page (used when the config changes). */
   function rescanAll(clearMarks) {
+    var started = performance.now();
     if (clearMarks) {
       document.querySelectorAll('[' + ATTR_MATCH + ']').forEach(function (el) {
         el.removeAttribute(ATTR_MATCH);
@@ -454,6 +459,8 @@
     if (compiled.sectionRules.length) allSections().forEach(testSection);
     scheduleFixedScan();
     scheduleCounts();
+    stats.rescans++;
+    stats.rescanMs += performance.now() - started;
   }
 
   /**
@@ -462,6 +469,7 @@
    * Each batch is reduced to the set of affected units, each tested once.
    */
   function onMutations(records) {
+    var started = performance.now();
     var touched = new Set();
     var sections = new Set();
     var checkSections = compiled.sectionRules.length > 0;
@@ -492,6 +500,11 @@
     sections.forEach(testSection);
     scheduleFixedScan();
     scheduleCounts();
+    var ms = performance.now() - started;
+    stats.batches++;
+    stats.unitsTested += touched.size;
+    stats.totalMs += ms;
+    if (ms > stats.maxBatchMs) stats.maxBatchMs = ms;
   }
 
   function startObserving() {
@@ -707,6 +720,14 @@
     },
 
     dumpDom: dumpDom,
+
+    /** Time spent filtering on this page so far: mutation batches, units tested, ms. */
+    stats: function () {
+      var s = {};
+      Object.keys(stats).forEach(function (k) { s[k] = Math.round(stats[k] * 100) / 100; });
+      s.marked = document.querySelectorAll('[' + ATTR_MATCH + ']').length;
+      return s;
+    },
 
     /** For poking at from chrome://inspect: what would each rule see for this unit? */
     explain: function (el) {
