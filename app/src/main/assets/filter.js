@@ -276,9 +276,9 @@
    * Facts about a unit that rules test against. The header is computed eagerly
    * (every rule needs it); the full text is computed only if a rule asks.
    *
-   *   header      the first few TextAreas, cleaned: ["reform uk", "sponsoredpaid for by reform uk", …]
+   *   header      the first few TextAreas, cleaned: ["acme ltd", "sponsoredpaid for by acme ltd", …]
    *   headerParts header plus each TextArea split at its icon glyphs:
-   *               […, "sponsored", "paid for by reform uk", …]
+   *               […, "sponsored", "paid for by acme ltd", …]
    *               Facebook separates label pieces with glyphs, and clean() deleting
    *               them would glue "Sponsored" onto the next piece.
    */
