@@ -1,14 +1,14 @@
 // Read-only. Detail of label nodes. Only whitelisted UI strings are returned verbatim.
 (() => {
   const SAFE = /^(ad|sponsored|suggested for you|reels|people you may know|join|follow|add friend|open app|get app|not now|see all|memories|on this day|your memories|suggested groups?|groups you might like|see more information|hide|•)$/i;
-  const clean = s => s.replace(/[-]|[\u{F0000}-\u{FFFFD}]/gu, '').trim();
+  const clean = s => s.replace(/[\uE000-\uF8FF]|[\u{F0000}-\u{FFFFD}]/gu, '').trim();
   const desc = el => {
     if (!el) return null;
     const r = el.getBoundingClientRect();
     return { tag: el.tagName.toLowerCase(), mc: el.dataset.mcomponent, type: el.dataset.type,
       attrs: [...el.attributes].map(a => a.name).filter(n => !['style','class'].includes(n)).join(' '),
       x: Math.round(r.x), w: Math.round(r.width), h: Math.round(r.height),
-      raw: [...el.textContent].map(c => c.codePointAt(0) > 0xFFFF || /[-]/.test(c) ? 'U+' + c.codePointAt(0).toString(16) : c).join('|').slice(0, 80) };
+      raw: [...el.textContent].map(c => c.codePointAt(0) > 0xFFFF || /[\uE000-\uF8FF]/.test(c) ? 'U+' + c.codePointAt(0).toString(16) : c).join('|').slice(0, 80) };
   };
   const depthIn = (el, root) => { let d = 0; while (el && el !== root) { el = el.parentElement; d++; } return d; };
   const vs = document.querySelector('[data-type="vscroller"]');

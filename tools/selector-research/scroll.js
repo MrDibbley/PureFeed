@@ -1,7 +1,7 @@
 // Read-only apart from scrolling. Scrolls the feed to load more units, then classifies them.
 (async () => {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
-  const clean = s => s.replace(/[-]|[\u{F0000}-\u{FFFFD}]/gu, '').replace(/\s+/g, ' ').trim();
+  const clean = s => s.replace(/[\uE000-\uF8FF]|[\u{F0000}-\u{FFFFD}]/gu, '').replace(/\s+/g, ' ').trim();
   const vs = () => document.querySelector('[data-type="vscroller"]');
   const seenIds = new Map();   // tracking id -> summary, survives virtualisation
   const textFreq = {};

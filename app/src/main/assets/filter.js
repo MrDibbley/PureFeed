@@ -65,7 +65,7 @@
   /**
    * Normalises visible text for comparison: strips Facebook's icon-font glyphs
    * (Private Use Area characters, see rules.json "text.strip"), collapses
-   * whitespace and lower-cases. "Ad󰎋" → "ad".
+   * whitespace and lower-cases. "Ad" followed by two icon glyphs → "ad".
    */
   function clean(s) {
     return s.replace(compiled.strip, '').replace(/\s+/g, ' ').trim().toLowerCase();
