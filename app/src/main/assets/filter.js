@@ -84,8 +84,11 @@
    * A rule matches if ANY of its matchers match.
    *
    * Matcher types (all case-insensitive, after clean()):
-   *   headerText:    ["Ad", …]  one of the unit's first few TextAreas equals one of these
-   *   headerPattern: "regex"    one of the unit's first few TextAreas matches this regex
+   *   headerText:    ["Ad", …]  one of the unit's first few TextAreas, or one PART of
+   *                             one, equals one of these. Parts are the pieces between
+   *                             icon glyphs: "Sponsored<glyph>Paid for by X" has the
+   *                             parts "sponsored" and "paid for by x".
+   *   headerPattern: "regex"    one of those header texts or parts matches this regex
    *   anyText:       ["…"]      any TextArea in the unit equals one of these
    *   selector:      "css"      the unit contains an element matching this selector
    */
@@ -93,11 +96,11 @@
     var tests = [];
     if (match.headerText) {
       var header = match.headerText.map(function (t) { return t.toLowerCase(); });
-      tests.push(function (f) { return f.header.some(function (t) { return header.indexOf(t) >= 0; }); });
+      tests.push(function (f) { return f.headerParts.some(function (t) { return header.indexOf(t) >= 0; }); });
     }
     if (match.headerPattern) {
       var re = new RegExp(match.headerPattern, 'i');
-      tests.push(function (f) { return f.header.some(function (t) { return re.test(t); }); });
+      tests.push(function (f) { return f.headerParts.some(function (t) { return re.test(t); }); });
     }
     if (match.anyText) {
       var any = match.anyText.map(function (t) { return t.toLowerCase(); });
@@ -255,20 +258,38 @@
   }
 
   /**
-   * Facts about a unit that rules test against. header is computed eagerly
+   * Facts about a unit that rules test against. The header is computed eagerly
    * (every rule needs it); the full text is computed only if a rule asks.
+   *
+   *   header      the first few TextAreas, cleaned: ["reform uk", "sponsoredpaid for by reform uk", …]
+   *   headerParts header plus each TextArea split at its icon glyphs:
+   *               […, "sponsored", "paid for by reform uk", …]
+   *               Facebook separates label pieces with glyphs, and clean() deleting
+   *               them would glue "Sponsored" onto the next piece.
    */
   function unitFacts(unit) {
     var textEls = unit.querySelectorAll(compiled.textSelector);
     var header = [];
+    var headerParts = [];
     for (var i = 0; i < textEls.length && header.length < compiled.headerLimit; i++) {
-      var t = clean(textEls[i].textContent);
-      if (t) header.push(t);   // icon-only TextAreas clean to "" and don't use up a slot
+      var raw = textEls[i].textContent;
+      var t = clean(raw);
+      if (!t) continue;   // icon-only TextAreas clean to "" and don't use up a slot
+      header.push(t);
+      headerParts.push(t);
+      var parts = raw.split(compiled.strip);
+      if (parts.length > 1) {
+        parts.forEach(function (p) {
+          p = clean(p);
+          if (p && p !== t) headerParts.push(p);
+        });
+      }
     }
     var all = null, full = null;
     return {
       unit: unit,
       header: header,
+      headerParts: headerParts,
       allTexts: function () {
         if (!all) all = Array.prototype.map.call(textEls, function (e) { return clean(e.textContent); });
         return all;
@@ -481,6 +502,7 @@
       var f = unitFacts(unit);
       return {
         header: f.header,
+        headerParts: f.headerParts,
         matched: unit.getAttribute(ATTR_MATCH),
         rules: compiled.unitRules.map(function (r) { return r.id + ': ' + r.test(f); })
       };

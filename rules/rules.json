@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-17",
+  "updated": "2026-10-17.2",
   "notes": "Detection data for assets/filter.js. See docs/selectors.md for how each signal was found. All strings are matched case-insensitively after icon glyphs are stripped. Bump \"updated\" on every change (e.g. 2026-10-17.2): the app ignores downloaded files older than its built-in copy.",
 
   "units": {
@@ -18,7 +18,10 @@
     "sponsored": {
       "label": "Sponsored",
       "color": "#E53935",
-      "match": { "headerText": ["Ad", "Sponsored"] }
+      "match": {
+        "headerText": ["Ad", "Sponsored"],
+        "headerPattern": "^paid for by "
+      }
     },
     "suggested": {
       "label": "Suggested",

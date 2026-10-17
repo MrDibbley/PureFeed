@@ -57,7 +57,10 @@ html                                   ← the document scrolls (document.scroll
 
 Many TextAreas end with characters from Facebook's icon font. These are Unicode
 Private Use Area code points, for example `U+F078B` and `U+F17E1` after "Ad".
-**Strip `[-]` and `[\u{F0000}-\u{FFFFD}]` before comparing text.**
+**Strip `[\uE000-\uF8FF]` and `[\u{F0000}-\u{FFFFD}]` before comparing text.**
+Glyphs are also used as **separators between label parts** (see political ads
+below), so filter.js matches both the whole cleaned text and each piece between
+glyphs.
 Some strings also contain `U+200E` (left-to-right mark) around timestamps.
 
 ## Detection signals
@@ -69,6 +72,7 @@ index 1 is the subtitle line, and index 2–3 hold the "•" and the inline acti
 | Content | Signal | Where | Confidence |
 |---|---|---|---|
 | **Sponsored / ad** | A TextArea whose cleaned text is exactly `Ad` (raw: `Ad` + 2 icon glyphs). Its inner `<span>` is plain `Ad`, **not scrambled** as it is on desktop. | Header TextArea index 1, about 37px below the unit top | **High** (14/14 ads in sample) |
+| **Political / issue ad** | Same subtitle TextArea, but three parts: `<span>Sponsored</span>`, an icon-glyph separator span, `<span>Paid for by …</span>`. Stripping glyphs glues these into "SponsoredPaid for by …", so header text is **also split at glyphs** and each part matched separately. | Header TextArea index 1, about 37px below the unit top | High (seen 2026-10-17) |
 | ad, secondary | A call-to-action TextArea: `Shop now`, `Learn more` (others likely: `Sign up`, `Book now`, `Install now`, `Get offer`…) | Lower in the unit | Medium. Only use together with the label, since organic page posts can have CTAs |
 | **Suggested post** (page/person you don't follow) | Header contains `•` followed by a TextArea `Follow`. That TextArea has `role="button"` and `data-action-id`. | Header TextArea index 2–3 | High |
 | **Group recommendation** (post from a group you're not in) | Header contains `•` followed by a TextArea `Join` | Header TextArea index 2–3 | High |
