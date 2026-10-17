@@ -44,7 +44,8 @@ Enable USB debugging on the phone, plug it in, then:
 3. Update the strings or selectors in `rules/rules.json`. See `docs/selectors.md`.
 4. **Bump `"updated"`** in the same file (e.g. `2026-10-17` → `2026-10-17.2`). The app
    ignores a downloaded file whose `updated` is older than its built-in copy.
-5. Push it. If the app's **Rule updates** URL points at the raw file, e.g.
-   `https://raw.githubusercontent.com/<you>/<repo>/main/rules/rules.json`,
-   the phone picks it up on next launch (or tap **Check now**). No rebuild needed.
+5. Push it. The app's **Rule updates** URL defaults to
+   `https://raw.githubusercontent.com/MrDibbley/FaceBlockMobile/main/rules/rules.json`,
+   so the phone picks it up on next launch (or tap **Check now**). No rebuild needed.
+   GitHub caches raw files for up to 5 minutes, so allow that long after pushing.
    The next APK build bundles the same file as its offline fallback.

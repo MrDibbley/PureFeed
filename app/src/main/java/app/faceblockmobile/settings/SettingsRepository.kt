@@ -26,9 +26,12 @@ class SettingsRepository(private val context: Context) {
         .map { prefs -> prefs[key]?.let(::decode) ?: FilterSettings() }
         .distinctUntilChanged()
 
-    /** Where to fetch rules.json from (e.g. a raw.githubusercontent.com URL). Empty = bundled only. */
+    /**
+     * Where to fetch rules.json from. Defaults to this project's GitHub copy until the
+     * user saves something else; saving an empty URL means bundled rules only.
+     */
     val rulesUrl: Flow<String> = context.dataStore.data
-        .map { it[rulesUrlKey].orEmpty() }
+        .map { it[rulesUrlKey] ?: DEFAULT_RULES_URL }
         .distinctUntilChanged()
 
     suspend fun setRulesUrl(url: String) {
@@ -55,6 +58,10 @@ class SettingsRepository(private val context: Context) {
             val current = prefs[key]?.let(::decode) ?: FilterSettings()
             prefs[key] = json.encodeToString(FilterSettings.serializer(), transform(current))
         }
+    }
+
+    companion object {
+        const val DEFAULT_RULES_URL = "https://raw.githubusercontent.com/MrDibbley/FaceBlockMobile/main/rules/rules.json"
     }
 
     private fun decode(s: String): FilterSettings =
