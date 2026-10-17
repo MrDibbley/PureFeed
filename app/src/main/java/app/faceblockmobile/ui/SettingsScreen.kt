@@ -59,14 +59,9 @@ fun SettingsScreen(
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding)) {
             item { SectionHeader(R.string.section_rules) }
-            item {
-                RuleSwitch(R.string.rule_sponsored, R.string.rule_sponsored_desc, settings.isEnabled(RuleIds.SPONSORED)) { on ->
-                    onChange { it.withEnabled(RuleIds.SPONSORED, on) }
-                }
-            }
-            item {
-                RuleSwitch(R.string.rule_app_prompts, R.string.rule_app_prompts_desc, settings.isEnabled(RuleIds.APP_PROMPTS)) { on ->
-                    onChange { it.withEnabled(RuleIds.APP_PROMPTS, on) }
+            items(BUILT_IN_RULES, key = { it.id }) { rule ->
+                RuleSwitch(rule.title, rule.description, settings.isEnabled(rule.id)) { on ->
+                    onChange { it.withEnabled(rule.id, on) }
                 }
             }
 
@@ -101,6 +96,18 @@ fun SettingsScreen(
         }
     }
 }
+
+/** A switch for one rules.json rule. */
+private class BuiltInRule(val id: String, val title: Int, val description: Int)
+
+private val BUILT_IN_RULES = listOf(
+    BuiltInRule(RuleIds.SPONSORED, R.string.rule_sponsored, R.string.rule_sponsored_desc),
+    BuiltInRule(RuleIds.SUGGESTED, R.string.rule_suggested, R.string.rule_suggested_desc),
+    BuiltInRule(RuleIds.GROUPS, R.string.rule_groups, R.string.rule_groups_desc),
+    BuiltInRule(RuleIds.REELS, R.string.rule_reels, R.string.rule_reels_desc),
+    BuiltInRule(RuleIds.PYMK, R.string.rule_pymk, R.string.rule_pymk_desc),
+    BuiltInRule(RuleIds.APP_PROMPTS, R.string.rule_app_prompts, R.string.rule_app_prompts_desc),
+)
 
 @Composable
 private fun SectionHeader(title: Int) {

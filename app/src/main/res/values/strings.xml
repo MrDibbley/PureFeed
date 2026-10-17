@@ -14,6 +14,14 @@
     <string name="section_rules">Hide</string>
     <string name="rule_sponsored">Sponsored posts</string>
     <string name="rule_sponsored_desc">Posts labelled \"Ad\"</string>
+    <string name="rule_suggested">Suggested posts</string>
+    <string name="rule_suggested_desc">Posts from pages and people you don\'t follow, with a \"Follow\" button</string>
+    <string name="rule_groups">Group suggestions</string>
+    <string name="rule_groups_desc">Posts from groups you\'re not in, with a \"Join\" button</string>
+    <string name="rule_reels">Reels</string>
+    <string name="rule_reels_desc">The Reels carousel in the feed</string>
+    <string name="rule_pymk">People you may know</string>
+    <string name="rule_pymk_desc">Friend suggestion carousels</string>
     <string name="rule_app_prompts">\"Open app\" prompts</string>
     <string name="rule_app_prompts_desc">The bar nagging you to install the Facebook app</string>
     <string name="section_keywords">Keyword filter</string>

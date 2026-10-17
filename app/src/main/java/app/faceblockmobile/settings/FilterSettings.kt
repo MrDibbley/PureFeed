@@ -23,6 +23,10 @@ data class FilterSettings(
     companion object {
         val DEFAULT_ENABLED = mapOf(
             RuleIds.SPONSORED to true,
+            RuleIds.SUGGESTED to true,
+            RuleIds.GROUPS to true,
+            RuleIds.REELS to true,
+            RuleIds.PYMK to true,
             RuleIds.APP_PROMPTS to true,
             RuleIds.KEYWORDS to true,
         )
@@ -31,6 +35,10 @@ data class FilterSettings(
 
 object RuleIds {
     const val SPONSORED = "sponsored"
+    const val SUGGESTED = "suggested"
+    const val GROUPS = "groups"
+    const val REELS = "reels"
+    const val PYMK = "pymk"
     const val APP_PROMPTS = "appPrompts"
     const val KEYWORDS = "keywords"
 }
