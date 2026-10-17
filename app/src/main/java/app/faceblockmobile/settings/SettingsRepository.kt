@@ -18,11 +18,21 @@ private val Context.dataStore by preferencesDataStore(name = "settings")
 class SettingsRepository(private val context: Context) {
 
     private val key = stringPreferencesKey("filter_settings")
+    private val rulesUrlKey = stringPreferencesKey("rules_url")
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     val settings: Flow<FilterSettings> = context.dataStore.data
         .map { prefs -> prefs[key]?.let(::decode) ?: FilterSettings() }
         .distinctUntilChanged()
+
+    /** Where to fetch rules.json from (e.g. a raw.githubusercontent.com URL). Empty = bundled only. */
+    val rulesUrl: Flow<String> = context.dataStore.data
+        .map { it[rulesUrlKey].orEmpty() }
+        .distinctUntilChanged()
+
+    suspend fun setRulesUrl(url: String) {
+        context.dataStore.edit { it[rulesUrlKey] = url.trim() }
+    }
 
     suspend fun update(transform: (FilterSettings) -> FilterSettings) {
         context.dataStore.edit { prefs ->

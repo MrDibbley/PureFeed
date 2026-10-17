@@ -5,8 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -16,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -31,17 +35,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.faceblockmobile.R
+import app.faceblockmobile.filter.RulesRepository
 import app.faceblockmobile.settings.FilterSettings
 import app.faceblockmobile.settings.RuleIds
+
+/** Everything the settings screen shows besides [FilterSettings]. */
+class RulesInfo(
+    val state: RulesRepository.State,
+    val url: String,
+    val onSaveUrl: (String) -> Unit,
+    val onCheckNow: () -> Unit,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     settings: FilterSettings,
     onChange: ((FilterSettings) -> FilterSettings) -> Unit,
+    rules: RulesInfo,
     onBack: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
@@ -57,7 +73,7 @@ fun SettingsScreen(
             )
         },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding).imePadding()) {
             item { SectionHeader(R.string.section_rules) }
             items(BUILT_IN_RULES, key = { it.id }) { rule ->
                 RuleSwitch(rule.title, rule.description, settings.isEnabled(rule.id)) { on ->
@@ -71,21 +87,33 @@ fun SettingsScreen(
                     onChange { it.withEnabled(RuleIds.KEYWORDS, on) }
                 }
             }
+            listEditor(
+                key = "keywords",
+                entries = settings.keywords,
+                hint = R.string.keyword_hint,
+                onAdd = { word -> onChange { it.copy(keywords = it.keywords.addUnique(word)) } },
+                onRemove = { word -> onChange { it.copy(keywords = it.keywords - word) } },
+            )
+
+            item { HorizontalDivider(); SectionHeader(R.string.section_muted) }
             item {
-                AddEntryField { word ->
-                    onChange { s -> if (s.keywords.any { it.equals(word, ignoreCase = true) }) s else s.copy(keywords = s.keywords + word) }
+                RuleSwitch(R.string.rule_muted, R.string.rule_muted_desc, settings.isEnabled(RuleIds.MUTED)) { on ->
+                    onChange { it.withEnabled(RuleIds.MUTED, on) }
                 }
             }
-            items(settings.keywords, key = { it }) { word ->
-                ListItem(
-                    headlineContent = { Text(word) },
-                    trailingContent = {
-                        IconButton(onClick = { onChange { s -> s.copy(keywords = s.keywords - word) } }) {
-                            Icon(painterResource(R.drawable.ic_close), stringResource(R.string.remove_keyword, word))
-                        }
-                    },
-                )
-            }
+            listEditor(
+                key = "muted",
+                entries = settings.muted,
+                hint = R.string.muted_hint,
+                onAdd = { name -> onChange { it.copy(muted = it.muted.addUnique(name)) } },
+                onRemove = { name -> onChange { it.copy(muted = it.muted - name) } },
+            )
+
+            item { HorizontalDivider(); SectionHeader(R.string.section_css) }
+            item { CustomCssEditor(settings.customCss) { css -> onChange { it.copy(customCss = css) } } }
+
+            item { HorizontalDivider(); SectionHeader(R.string.section_rules_source) }
+            item { RulesSourceEditor(rules) }
 
             item { HorizontalDivider(); SectionHeader(R.string.section_debug) }
             item {
@@ -106,8 +134,12 @@ private val BUILT_IN_RULES = listOf(
     BuiltInRule(RuleIds.GROUPS, R.string.rule_groups, R.string.rule_groups_desc),
     BuiltInRule(RuleIds.REELS, R.string.rule_reels, R.string.rule_reels_desc),
     BuiltInRule(RuleIds.PYMK, R.string.rule_pymk, R.string.rule_pymk_desc),
+    BuiltInRule(RuleIds.MEMORIES, R.string.rule_memories, R.string.rule_memories_desc),
     BuiltInRule(RuleIds.APP_PROMPTS, R.string.rule_app_prompts, R.string.rule_app_prompts_desc),
 )
+
+private fun List<String>.addUnique(entry: String) =
+    if (any { it.equals(entry, ignoreCase = true) }) this else this + entry
 
 @Composable
 private fun SectionHeader(title: Int) {
@@ -129,12 +161,33 @@ private fun RuleSwitch(title: Int, description: Int, checked: Boolean, onChecked
     )
 }
 
+/** An "add" field followed by the current entries, each with a remove button. */
+private fun LazyListScope.listEditor(
+    key: String,
+    entries: List<String>,
+    hint: Int,
+    onAdd: (String) -> Unit,
+    onRemove: (String) -> Unit,
+) {
+    item(key = "$key-add") { AddEntryField(hint, onAdd) }
+    items(entries, key = { "$key-$it" }) { entry ->
+        ListItem(
+            headlineContent = { Text(entry) },
+            trailingContent = {
+                IconButton(onClick = { onRemove(entry) }) {
+                    Icon(painterResource(R.drawable.ic_close), stringResource(R.string.remove_entry, entry))
+                }
+            },
+        )
+    }
+}
+
 @Composable
-private fun AddEntryField(onAdd: (String) -> Unit) {
+private fun AddEntryField(hint: Int, onAdd: (String) -> Unit) {
     var text by rememberSaveable { mutableStateOf("") }
     val submit = {
-        val word = text.trim()
-        if (word.isNotEmpty()) onAdd(word)
+        val entry = text.trim()
+        if (entry.isNotEmpty()) onAdd(entry)
         text = ""
     }
     Row(
@@ -145,12 +198,75 @@ private fun AddEntryField(onAdd: (String) -> Unit) {
         OutlinedTextField(
             value = text,
             onValueChange = { text = it },
-            placeholder = { Text(stringResource(R.string.keyword_hint)) },
+            placeholder = { Text(stringResource(hint)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { submit() }),
             modifier = Modifier.weight(1f),
         )
         TextButton(onClick = submit, enabled = text.isNotBlank()) { Text(stringResource(R.string.add)) }
+    }
+}
+
+/** Multi-line CSS editor. Applied on Save, not per keystroke (each change re-scans the page). */
+@Composable
+private fun CustomCssEditor(saved: String, onSave: (String) -> Unit) {
+    var text by rememberSaveable(saved) { mutableStateOf(saved) }
+    Text(
+        stringResource(R.string.css_desc),
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
+    OutlinedTextField(
+        value = text,
+        onValueChange = { text = it },
+        placeholder = { Text(stringResource(R.string.css_hint), fontFamily = FontFamily.Monospace) },
+        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+        keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp).padding(horizontal = 16.dp),
+    )
+    Row(Modifier.padding(horizontal = 8.dp)) {
+        TextButton(onClick = { onSave(text) }, enabled = text != saved) { Text(stringResource(R.string.save)) }
+        TextButton(onClick = { text = saved }, enabled = text != saved) { Text(stringResource(R.string.revert)) }
+    }
+}
+
+@Composable
+private fun RulesSourceEditor(rules: RulesInfo) {
+    var url by rememberSaveable(rules.url) { mutableStateOf(rules.url) }
+    val state = rules.state
+    val source = stringResource(
+        if (state.source == RulesRepository.Source.REMOTE) R.string.rules_source_remote else R.string.rules_source_bundled
+    )
+    Text(
+        stringResource(R.string.rules_using, source, state.updated),
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
+    state.lastCheck?.let {
+        Text(
+            stringResource(R.string.rules_last_check, it),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+    }
+    OutlinedTextField(
+        value = url,
+        onValueChange = { url = it },
+        label = { Text(stringResource(R.string.rules_url)) },
+        placeholder = { Text("https://raw.githubusercontent.com/…/rules/rules.json") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { rules.onSaveUrl(url) }),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    )
+    Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = { rules.onSaveUrl(url) }, enabled = url.trim() != rules.url) {
+            Text(stringResource(R.string.save))
+        }
+        OutlinedButton(onClick = rules.onCheckNow, enabled = rules.url.isNotBlank()) {
+            Text(stringResource(R.string.rules_check_now))
+        }
     }
 }

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "updated": "2026-10-17",
-  "notes": "Detection data for assets/filter.js. See docs/selectors.md for how each signal was found. All strings are matched case-insensitively after icon glyphs are stripped.",
+  "notes": "Detection data for assets/filter.js. See docs/selectors.md for how each signal was found. All strings are matched case-insensitively after icon glyphs are stripped. Bump \"updated\" on every change (e.g. 2026-10-17.2): the app ignores downloaded files older than its built-in copy.",
 
   "units": {
     "selector": "[data-tracking-duration-id]",

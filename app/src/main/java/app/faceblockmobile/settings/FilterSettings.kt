@@ -27,8 +27,10 @@ data class FilterSettings(
             RuleIds.GROUPS to true,
             RuleIds.REELS to true,
             RuleIds.PYMK to true,
+            RuleIds.MEMORIES to false,   // detection unverified, see docs/selectors.md
             RuleIds.APP_PROMPTS to true,
             RuleIds.KEYWORDS to true,
+            RuleIds.MUTED to true,
         )
     }
 }
@@ -39,6 +41,8 @@ object RuleIds {
     const val GROUPS = "groups"
     const val REELS = "reels"
     const val PYMK = "pymk"
+    const val MEMORIES = "memories"
+    const val MUTED = "muted"
     const val APP_PROMPTS = "appPrompts"
     const val KEYWORDS = "keywords"
 }

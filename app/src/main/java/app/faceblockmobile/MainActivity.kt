@@ -30,12 +30,17 @@ import app.faceblockmobile.settings.SettingsRepository
 import app.faceblockmobile.ui.FeedActions
 import app.faceblockmobile.ui.FeedScreen
 import app.faceblockmobile.ui.FeedState
+import app.faceblockmobile.ui.RulesInfo
 import app.faceblockmobile.ui.SettingsScreen
 import app.faceblockmobile.ui.theme.FaceBlockTheme
 import app.faceblockmobile.web.FeedEvents
 import app.faceblockmobile.web.FeedWebView
 import app.faceblockmobile.web.PureFeedChromeClient
 import app.faceblockmobile.web.PureFeedWebViewClient
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -45,6 +50,7 @@ class MainActivity : ComponentActivity(), FeedEvents {
     private lateinit var injector: FilterInjector
     private lateinit var settingsRepo: SettingsRepository
     private lateinit var dumper: DomDumper
+    private lateinit var rulesRepo: RulesRepository
     private val feedState = FeedState()
     private var rendererGone = false
     private var pageLoaded = false
@@ -61,7 +67,7 @@ class MainActivity : ComponentActivity(), FeedEvents {
 
         settingsRepo = SettingsRepository(applicationContext)
         dumper = DomDumper(applicationContext)
-        val rules = RulesRepository(this).bundled()
+        rulesRepo = RulesRepository(applicationContext)
 
         webView = FeedWebView.create(this).apply {
             webViewClient = PureFeedWebViewClient(this@MainActivity)
@@ -77,10 +83,11 @@ class MainActivity : ComponentActivity(), FeedEvents {
         injector = FilterInjector(webView, assets.open("filter.js").bufferedReader().use { it.readText() })
 
         // The first page load waits for the first settings value, so the filter is
-        // already registered when Facebook starts rendering.
+        // already registered when Facebook starts rendering. After that, any change to
+        // the settings or the rules (e.g. a remote update) re-configures the page live.
         val savedWebView = savedInstanceState?.getBundle(KEY_WEBVIEW)
         lifecycleScope.launch {
-            settingsRepo.settings.collect { settings ->
+            combine(rulesRepo.state.map { it.rules }.distinctUntilChanged(), settingsRepo.settings, ::Pair).collect { (rules, settings) ->
                 injector.update(rules, settings)
                 if (!pageLoaded) {
                     pageLoaded = true
@@ -91,8 +98,15 @@ class MainActivity : ComponentActivity(), FeedEvents {
             }
         }
 
+        // Check the remote rules URL once per launch (cheap: conditional request with ETag).
+        if (savedInstanceState == null) {
+            lifecycleScope.launch { rulesRepo.refresh(settingsRepo.rulesUrl.first()) }
+        }
+
         setContent {
             val settings by settingsRepo.settings.collectAsStateWithLifecycle(FilterSettings())
+            val rulesState by rulesRepo.state.collectAsStateWithLifecycle()
+            val rulesUrl by settingsRepo.rulesUrl.collectAsStateWithLifecycle("")
             var showSettings by rememberSaveable { mutableStateOf(false) }
             val updateSettings: ((FilterSettings) -> FilterSettings) -> Unit = { transform ->
                 lifecycleScope.launch { settingsRepo.update(transform) }
@@ -100,7 +114,17 @@ class MainActivity : ComponentActivity(), FeedEvents {
             FaceBlockTheme {
                 Surface(Modifier.fillMaxSize()) {
                     if (showSettings) {
-                        SettingsScreen(settings, onChange = updateSettings, onBack = { showSettings = false })
+                        SettingsScreen(
+                            settings,
+                            onChange = updateSettings,
+                            rules = RulesInfo(
+                                state = rulesState,
+                                url = rulesUrl,
+                                onSaveUrl = { url -> lifecycleScope.launch { saveRulesUrl(url) } },
+                                onCheckNow = { lifecycleScope.launch { rulesRepo.refresh(rulesUrl) } },
+                            ),
+                            onBack = { showSettings = false },
+                        )
                     } else {
                         FeedScreen(
                             webView, feedState, settings.debug,
@@ -137,6 +161,11 @@ class MainActivity : ComponentActivity(), FeedEvents {
         (webView.parent as? ViewGroup)?.removeView(webView)
         webView.destroy()
         super.onDestroy()
+    }
+
+    private suspend fun saveRulesUrl(url: String) {
+        settingsRepo.setRulesUrl(url)
+        if (url.isBlank()) rulesRepo.clearRemote() else rulesRepo.refresh(url.trim())
     }
 
     private fun shareDump(file: File) {

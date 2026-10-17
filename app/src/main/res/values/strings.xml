@@ -22,6 +22,8 @@
     <string name="rule_reels_desc">The Reels carousel in the feed</string>
     <string name="rule_pymk">People you may know</string>
     <string name="rule_pymk_desc">Friend suggestion carousels</string>
+    <string name="rule_memories">Memories</string>
+    <string name="rule_memories_desc">\"On this day\" posts. Not yet verified on your feed: check with debug mode</string>
     <string name="rule_app_prompts">\"Open app\" prompts</string>
     <string name="rule_app_prompts_desc">The bar nagging you to install the Facebook app</string>
     <string name="section_keywords">Keyword filter</string>
@@ -29,7 +31,23 @@
     <string name="rule_keywords_desc">Whole words or phrases, case-insensitive</string>
     <string name="keyword_hint">Add a word or phrase</string>
     <string name="add">Add</string>
-    <string name="remove_keyword">Remove %1$s</string>
+    <string name="remove_entry">Remove %1$s</string>
+    <string name="section_muted">Muted pages and people</string>
+    <string name="rule_muted">Hide posts from these names</string>
+    <string name="rule_muted_desc">Exact name as shown at the top of the post</string>
+    <string name="muted_hint">Page, group or person name</string>
+    <string name="section_css">Custom CSS</string>
+    <string name="css_desc">Injected into every Facebook page. Tip: target data-* attributes, see docs/selectors.md</string>
+    <string name="css_hint">[data-type="vscroller"] { … }</string>
+    <string name="save">Save</string>
+    <string name="revert">Revert</string>
+    <string name="section_rules_source">Rule updates</string>
+    <string name="rules_using">Using %1$s rules, updated %2$s</string>
+    <string name="rules_source_bundled">built-in</string>
+    <string name="rules_source_remote">downloaded</string>
+    <string name="rules_last_check">Last check: %1$s</string>
+    <string name="rules_url">rules.json URL (checked on launch)</string>
+    <string name="rules_check_now">Check now</string>
     <string name="section_debug">Debugging</string>
     <string name="debug_mode">Debug mode</string>
     <string name="debug_mode_desc">Outline matched posts in a colour per rule instead of hiding them</string>

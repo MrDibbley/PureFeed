@@ -26,7 +26,7 @@ Enable USB debugging on the phone, plug it in, then:
 
 - `app/src/main/assets/filter.js` - the feed filter engine (injected into every page)
 - `rules/rules.json` - detection strings and selectors; bundled into the APK and,
-  from Phase 3, also fetched from a URL so filters can be fixed without a rebuild
+  also fetched from a URL so filters can be fixed without a rebuild
 - `app/src/main/java/app/faceblockmobile/web/` - WebView setup, clients, link policy
 - `app/src/main/java/app/faceblockmobile/filter/` - injection, JS bridge, rules loading
 - `app/src/main/java/app/faceblockmobile/settings/` - user settings (DataStore)
@@ -41,3 +41,9 @@ Enable USB debugging on the phone, plug it in, then:
 2. If something isn't caught, plug the phone in and open `chrome://inspect` in
    desktop Chrome (debug builds only), or use **Dump DOM** and share the file.
 3. Update the strings or selectors in `rules/rules.json`. See `docs/selectors.md`.
+4. **Bump `"updated"`** in the same file (e.g. `2026-10-17` → `2026-10-17.2`). The app
+   ignores a downloaded file whose `updated` is older than its built-in copy.
+5. Push it. If the app's **Rule updates** URL points at the raw file, e.g.
+   `https://raw.githubusercontent.com/<you>/<repo>/main/rules/rules.json`,
+   the phone picks it up on next launch (or tap **Check now**). No rebuild needed.
+   The next APK build bundles the same file as its offline fallback.
