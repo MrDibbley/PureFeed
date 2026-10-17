@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "updated": "2026-10-17",
+  "notes": "Detection data for assets/filter.js. See docs/selectors.md for how each signal was found. All strings are matched case-insensitively after icon glyphs are stripped.",
+
+  "units": {
+    "selector": "[data-tracking-duration-id]",
+    "parentSelector": "[data-type=\"vscroller\"]"
+  },
+
+  "text": {
+    "selector": "[data-mcomponent$=\"TextArea\"]",
+    "headerTextLimit": 5,
+    "strip": "[\\uE000-\\uF8FF\\u200E\\u200F]|[\\u{F0000}-\\u{FFFFD}]"
+  },
+
+  "rules": {
+    "sponsored": {
+      "label": "Sponsored",
+      "color": "#E53935",
+      "match": { "headerText": ["Ad", "Sponsored"] }
+    },
+    "suggested": {
+      "label": "Suggested",
+      "color": "#FB8C00",
+      "match": { "headerText": ["Follow", "Suggested for you"] }
+    },
+    "groups": {
+      "label": "Group suggestion",
+      "color": "#8E24AA",
+      "match": { "headerText": ["Join", "Suggested groups", "Groups you might like"] }
+    },
+    "reels": {
+      "label": "Reels",
+      "color": "#1E88E5",
+      "match": { "headerText": ["Reels", "Reels and short videos"] }
+    },
+    "pymk": {
+      "label": "People you may know",
+      "color": "#00897B",
+      "match": { "headerText": ["People you may know"] }
+    },
+    "memories": {
+      "label": "Memories",
+      "color": "#6D4C41",
+      "unverified": true,
+      "match": {
+        "headerText": ["Memories", "On this day", "Your memories"],
+        "headerPattern": "^\\d+ years? ago$"
+      }
+    },
+    "appPrompts": {
+      "label": "App prompt",
+      "color": "#757575",
+      "kind": "fixed",
+      "match": { "anyText": ["Open app", "Get app", "Get Facebook for Android", "Use the app"] },
+      "maxAncestorDepth": 10
+    }
+  },
+
+  "userRules": {
+    "keywords": { "label": "Keyword", "color": "#43A047" },
+    "muted": { "label": "Muted", "color": "#F4511E", "headerTextsToCheck": 2 }
+  }
+}

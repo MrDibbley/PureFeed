@@ -1,4 +1,28 @@
 <resources>
     <string name="app_name">FaceBlock</string>
     <string name="no_browser">No browser installed to open this link</string>
+
+    <string name="menu_settings">Filter settings</string>
+    <string name="menu_debug">Debug mode (outline, don\'t hide)</string>
+    <string name="menu_dump">Dump DOM</string>
+    <string name="menu_reload">Reload page</string>
+    <string name="filter_button">Filters, %1$d hidden</string>
+    <string name="dump_saved">Saved %1$s</string>
+
+    <string name="settings_title">Filters</string>
+    <string name="back">Back</string>
+    <string name="section_rules">Hide</string>
+    <string name="rule_sponsored">Sponsored posts</string>
+    <string name="rule_sponsored_desc">Posts labelled \"Ad\"</string>
+    <string name="rule_app_prompts">\"Open app\" prompts</string>
+    <string name="rule_app_prompts_desc">The bar nagging you to install the Facebook app</string>
+    <string name="section_keywords">Keyword filter</string>
+    <string name="rule_keywords">Hide posts containing these words</string>
+    <string name="rule_keywords_desc">Whole words or phrases, case-insensitive</string>
+    <string name="keyword_hint">Add a word or phrase</string>
+    <string name="add">Add</string>
+    <string name="remove_keyword">Remove %1$s</string>
+    <string name="section_debug">Debugging</string>
+    <string name="debug_mode">Debug mode</string>
+    <string name="debug_mode_desc">Outline matched posts in a colour per rule instead of hiding them</string>
 </resources>

@@ -24,6 +24,20 @@ Enable USB debugging on the phone, plug it in, then:
 
 ## Layout
 
+- `app/src/main/assets/filter.js` - the feed filter engine (injected into every page)
+- `rules/rules.json` - detection strings and selectors; bundled into the APK and,
+  from Phase 3, also fetched from a URL so filters can be fixed without a rebuild
 - `app/src/main/java/app/faceblockmobile/web/` - WebView setup, clients, link policy
+- `app/src/main/java/app/faceblockmobile/filter/` - injection, JS bridge, rules loading
+- `app/src/main/java/app/faceblockmobile/settings/` - user settings (DataStore)
 - `app/src/main/java/app/faceblockmobile/ui/` - Compose screens
-- `docs/` - selector research notes
+- `docs/selectors.md` - how Facebook's mobile markup is structured and what each rule keys on
+- `tools/selector-research/` - read-only DOM probes run against the app's WebView over USB
+
+## Fixing a broken filter
+
+1. Turn on debug mode (filter button, bottom right): matched posts get a coloured
+   outline and a label instead of disappearing.
+2. If something isn't caught, plug the phone in and open `chrome://inspect` in
+   desktop Chrome (debug builds only), or use **Dump DOM** and share the file.
+3. Update the strings or selectors in `rules/rules.json`. See `docs/selectors.md`.

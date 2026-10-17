@@ -30,6 +30,14 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // rules/rules.json (the copy the remote rules URL serves) is also bundled as the
+    // offline fallback, so there's only one file to edit.
+    sourceSets {
+        getByName("main") {
+            assets.directories.add("../rules")
+        }
+    }
 }
 
 dependencies {
