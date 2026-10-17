@@ -43,7 +43,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.faceblockmobile.R
+import app.faceblockmobile.block.TrackerBlocker
 import app.faceblockmobile.filter.RulesRepository
+import app.faceblockmobile.settings.BlockSettings
 import app.faceblockmobile.settings.FilterSettings
 import app.faceblockmobile.settings.RuleIds
 
@@ -55,14 +57,25 @@ class RulesInfo(
     val onCheckNow: () -> Unit,
 )
 
+/** Tracker blocking settings plus the bundled default list. */
+class BlockInfo(
+    val settings: BlockSettings,
+    val defaults: List<String>,
+    val onChange: ((BlockSettings) -> BlockSettings) -> Unit,
+) {
+    val domains get() = settings.domains ?: defaults
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     settings: FilterSettings,
     onChange: ((FilterSettings) -> FilterSettings) -> Unit,
     rules: RulesInfo,
+    block: BlockInfo,
     onBack: () -> Unit,
 ) {
+    var showBlocklist by rememberSaveable { mutableStateOf(false) }
     BackHandler(onBack = onBack)
     Scaffold(
         topBar = {
@@ -126,6 +139,34 @@ fun SettingsScreen(
                 onAdd = { name -> onChange { it.copy(muted = it.muted.addUnique(name)) } },
                 onRemove = { name -> onChange { it.copy(muted = it.muted - name) } },
             )
+
+            item { HorizontalDivider(); SectionHeader(R.string.section_block) }
+            item {
+                RuleSwitch(R.string.block_enabled, R.string.block_enabled_desc, block.settings.enabled) { on ->
+                    block.onChange { it.copy(enabled = on) }
+                }
+            }
+            item {
+                Row(Modifier.padding(horizontal = 8.dp)) {
+                    TextButton(onClick = { showBlocklist = !showBlocklist }) {
+                        Text(if (showBlocklist) stringResource(R.string.block_hide) else stringResource(R.string.block_show, block.domains.size))
+                    }
+                    TextButton(onClick = { block.onChange { it.copy(domains = null) } }, enabled = block.settings.domains != null) {
+                        Text(stringResource(R.string.block_reset))
+                    }
+                }
+            }
+            if (showBlocklist) {
+                listEditor(
+                    key = "block",
+                    entries = block.domains,
+                    hint = R.string.block_hint,
+                    onAdd = { entry ->
+                        TrackerBlocker.normalise(entry)?.let { d -> block.onChange { it.copy(domains = block.domains.addUnique(d)) } }
+                    },
+                    onRemove = { d -> block.onChange { it.copy(domains = block.domains - d) } },
+                )
+            }
 
             item { HorizontalDivider(); SectionHeader(R.string.section_css) }
             item { CustomCssEditor(settings.customCss) { css -> onChange { it.copy(customCss = css) } } }

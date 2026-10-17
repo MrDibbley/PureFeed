@@ -42,6 +42,14 @@ data class FilterSettings(
     }
 }
 
+/** Tracker blocking (TrackerBlocker). Not sent to the page. */
+@Serializable
+data class BlockSettings(
+    val enabled: Boolean = true,
+    /** null = use assets/blocklist.txt; otherwise the user's edited list. */
+    val domains: List<String>? = null,
+)
+
 object RuleIds {
     const val SPONSORED = "sponsored"
     const val SUGGESTED = "suggested"

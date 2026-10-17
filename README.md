@@ -27,6 +27,7 @@ Enable USB debugging on the phone, plug it in, then:
 - `app/src/main/assets/filter.js` - the feed filter engine (injected into every page)
 - `rules/rules.json` - detection strings and selectors; bundled into the APK and,
   also fetched from a URL so filters can be fixed without a rebuild
+- `app/src/main/assets/blocklist.txt` - default tracker domains (editable in the app)
 - `app/src/main/java/app/faceblockmobile/web/` - WebView setup, clients, link policy
 - `app/src/main/java/app/faceblockmobile/filter/` - injection, JS bridge, rules loading
 - `app/src/main/java/app/faceblockmobile/settings/` - user settings (DataStore)

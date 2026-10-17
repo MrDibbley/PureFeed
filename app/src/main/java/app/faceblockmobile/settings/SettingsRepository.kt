@@ -19,6 +19,7 @@ class SettingsRepository(private val context: Context) {
 
     private val key = stringPreferencesKey("filter_settings")
     private val rulesUrlKey = stringPreferencesKey("rules_url")
+    private val blockKey = stringPreferencesKey("block_settings")
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     val settings: Flow<FilterSettings> = context.dataStore.data
@@ -32,6 +33,21 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setRulesUrl(url: String) {
         context.dataStore.edit { it[rulesUrlKey] = url.trim() }
+    }
+
+    val blockSettings: Flow<BlockSettings> = context.dataStore.data
+        .map { prefs ->
+            prefs[blockKey]?.let { runCatching { json.decodeFromString(BlockSettings.serializer(), it) }.getOrNull() }
+                ?: BlockSettings()
+        }
+        .distinctUntilChanged()
+
+    suspend fun updateBlock(transform: (BlockSettings) -> BlockSettings) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[blockKey]?.let { runCatching { json.decodeFromString(BlockSettings.serializer(), it) }.getOrNull() }
+                ?: BlockSettings()
+            prefs[blockKey] = json.encodeToString(BlockSettings.serializer(), transform(current))
+        }
     }
 
     suspend fun update(transform: (FilterSettings) -> FilterSettings) {

@@ -4,6 +4,7 @@ import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,11 +13,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +51,10 @@ class FeedState {
     var refreshing by mutableStateOf(false)
     /** Hidden items on the current page, per rule id (from filter.js). */
     var hiddenCounts by mutableStateOf(emptyMap<String, Int>())
+    /** Rule id → label (from rules.json), for the breakdown. */
+    var ruleLabels by mutableStateOf(emptyMap<String, String>())
+    /** Tracker requests blocked on the current page. */
+    var blockedRequests by mutableIntStateOf(0)
 }
 
 /** Actions offered by the filter button's menu. */
@@ -95,7 +102,7 @@ fun FeedScreen(webView: WebView, state: FeedState, debug: Boolean, actions: Feed
         }
 
         FilterButton(
-            hidden = state.hiddenCounts.values.sum(),
+            state = state,
             debug = debug,
             actions = actions,
             modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
@@ -105,8 +112,9 @@ fun FeedScreen(webView: WebView, state: FeedState, debug: Boolean, actions: Feed
 
 /** Small translucent pill: filter icon + hidden count. Tap for the menu. */
 @Composable
-private fun FilterButton(hidden: Int, debug: Boolean, actions: FeedActions, modifier: Modifier) {
+private fun FilterButton(state: FeedState, debug: Boolean, actions: FeedActions, modifier: Modifier) {
     var menuOpen by remember { mutableStateOf(false) }
+    val hidden = state.hiddenCounts.values.sum()
     val description = stringResource(R.string.filter_button, hidden)
     Box(modifier) {
         Surface(
@@ -126,6 +134,8 @@ private fun FilterButton(hidden: Int, debug: Boolean, actions: FeedActions, modi
             }
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+            CountsSummary(state)
+            HorizontalDivider()
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.menu_settings)) },
                 onClick = { menuOpen = false; actions.onOpenSettings() },
@@ -144,6 +154,29 @@ private fun FilterButton(hidden: Int, debug: Boolean, actions: FeedActions, modi
                 onClick = { menuOpen = false; actions.onRefresh() },
             )
         }
+    }
+}
+
+/** "Hidden on this page" breakdown at the top of the menu. */
+@Composable
+private fun CountsSummary(state: FeedState) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).widthIn(min = 200.dp)) {
+        Text(stringResource(R.string.counts_title), style = MaterialTheme.typography.labelLarge)
+        val counts = state.hiddenCounts.filterValues { it > 0 }.toList().sortedByDescending { it.second }
+        if (counts.isEmpty()) {
+            Text(stringResource(R.string.counts_none), style = MaterialTheme.typography.bodySmall, color = muted)
+        }
+        counts.forEach { (id, n) -> CountRow(state.ruleLabels[id] ?: id, n) }
+        CountRow(stringResource(R.string.counts_trackers), state.blockedRequests)
+    }
+}
+
+@Composable
+private fun CountRow(label: String, count: Int) {
+    Row(Modifier.fillMaxWidth().padding(top = 2.dp)) {
+        Text(label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+        Text(count.toString(), style = MaterialTheme.typography.bodySmall)
     }
 }
 

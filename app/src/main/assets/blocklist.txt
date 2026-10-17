@@ -1,0 +1,48 @@
+# Third-party tracker and analytics domains blocked inside the app.
+# One domain per line; subdomains are included. Lines starting with # are ignored.
+# Editable in the app (Filter settings > Blocked domains). This file is the default list.
+#
+# Facebook's own domains (facebook.com, fbcdn.net, ...) are never blocked here,
+# whatever this list says, so a bad entry can't break login or the feed.
+
+# Google ads and analytics
+doubleclick.net
+googlesyndication.com
+googleadservices.com
+google-analytics.com
+googletagmanager.com
+googletagservices.com
+adservice.google.com
+
+# Ad exchanges and networks
+adnxs.com
+criteo.com
+criteo.net
+rubiconproject.com
+pubmatic.com
+openx.net
+casalemedia.com
+amazon-adsystem.com
+taboola.com
+outbrain.com
+media.net
+smartadserver.com
+adsrvr.org
+
+# Analytics, session recording, attribution
+scorecardresearch.com
+quantserve.com
+hotjar.com
+mixpanel.com
+segment.io
+segment.com
+amplitude.com
+fullstory.com
+newrelic.com
+nr-data.net
+branch.io
+app.link
+adjust.com
+appsflyer.com
+bat.bing.com
+clarity.ms

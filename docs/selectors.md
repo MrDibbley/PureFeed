@@ -124,6 +124,15 @@ at document start and refuses calls without transient user activation. Verified:
 with it off, the visible video played while scrolling; with it on, playback didn't
 advance.
 
+### Network: what the page loads
+
+On the feed, every resource is first-party: `scontent-*.xx.fbcdn.net` (images),
+`static.xx.fbcdn.net` and `z-m-static.xx.fbcdn.net` (JS/CSS), and `m.facebook.com`
+(tested 2026-10-17). m.facebook.com's Content Security Policy refuses third-party
+loads; for example, an image from `www.google.com` fires a `securitypolicyviolation` for
+`img-src`. So domain blocking (`assets/blocklist.txt`) can't remove ads or
+trackers from the feed, and the DOM filter has to.
+
 ## Recommended rule strategy (implemented in `rules.json`)
 
 1. **Find units**: `[data-type="vscroller"] > [data-tracking-duration-id]`.

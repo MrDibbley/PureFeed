@@ -9,6 +9,16 @@
     <string name="filter_button">Filters, %1$d hidden</string>
     <string name="dump_saved">Saved %1$s</string>
 
+    <string name="counts_title">Hidden on this page</string>
+    <string name="counts_none">Nothing yet</string>
+    <string name="counts_trackers">Tracker requests blocked</string>
+    <string name="section_block">Blocked tracker domains</string>
+    <string name="block_enabled">Block third-party trackers</string>
+    <string name="block_enabled_desc">Requests to these domains are refused. Facebook\'s own domains are never blocked.</string>
+    <string name="block_hint">Domain, e.g. tracker.example</string>
+    <string name="block_show">Show list (%1$d)</string>
+    <string name="block_hide">Hide list</string>
+    <string name="block_reset">Reset to defaults</string>
     <string name="settings_title">Filters</string>
     <string name="back">Back</string>
     <string name="section_feed">Feed</string>

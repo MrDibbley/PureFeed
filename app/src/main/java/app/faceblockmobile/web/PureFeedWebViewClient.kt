@@ -1,10 +1,14 @@
 package app.faceblockmobile.web
 
 import android.graphics.Bitmap
+import android.util.Log
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import app.faceblockmobile.block.TrackerBlocker
+import java.io.ByteArrayInputStream
 
 /** Callbacks from the WebView up to the activity / UI state. */
 interface FeedEvents {
@@ -15,9 +19,22 @@ interface FeedEvents {
     fun onOpenExternal(url: String)
     /** The renderer crashed or was killed; the WebView instance is dead and must be replaced. */
     fun onRendererGone()
+    /** A request was blocked by [TrackerBlocker]. Called on a background thread. */
+    fun onRequestBlocked()
 }
 
-class PureFeedWebViewClient(private val events: FeedEvents) : WebViewClient() {
+class PureFeedWebViewClient(
+    private val events: FeedEvents,
+    private val blocker: TrackerBlocker,
+) : WebViewClient() {
+
+    /** Runs on a WebView background thread for every request the page makes. */
+    override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+        if (!blocker.shouldBlock(request.url.host)) return null
+        Log.d("FaceBlock", "Blocked tracker request to ${request.url.host}")
+        events.onRequestBlocked()
+        return WebResourceResponse("text/plain", "utf-8", 204, "Blocked", emptyMap(), ByteArrayInputStream(ByteArray(0)))
+    }
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         // Subframe navigations (iframes) are left alone.
@@ -33,6 +50,7 @@ class PureFeedWebViewClient(private val events: FeedEvents) : WebViewClient() {
     }
 
     override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+        blocker.resetCount()
         events.onLoadingChanged(true)
     }
 

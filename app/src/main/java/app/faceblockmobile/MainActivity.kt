@@ -5,6 +5,8 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebView
@@ -21,15 +23,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import app.faceblockmobile.block.TrackerBlocker
 import app.faceblockmobile.debug.DomDumper
 import app.faceblockmobile.filter.FilterBridge
 import app.faceblockmobile.filter.FilterInjector
 import app.faceblockmobile.filter.RulesRepository
+import app.faceblockmobile.settings.BlockSettings
 import app.faceblockmobile.settings.FilterSettings
 import app.faceblockmobile.settings.SettingsRepository
 import app.faceblockmobile.ui.FeedActions
 import app.faceblockmobile.ui.FeedScreen
 import app.faceblockmobile.ui.FeedState
+import app.faceblockmobile.ui.BlockInfo
 import app.faceblockmobile.ui.RulesInfo
 import app.faceblockmobile.ui.SettingsScreen
 import app.faceblockmobile.ui.theme.FaceBlockTheme
@@ -43,7 +48,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MainActivity : ComponentActivity(), FeedEvents {
 
@@ -52,6 +60,10 @@ class MainActivity : ComponentActivity(), FeedEvents {
     private lateinit var settingsRepo: SettingsRepository
     private lateinit var dumper: DomDumper
     private lateinit var rulesRepo: RulesRepository
+    private lateinit var chromeClient: PureFeedChromeClient
+    private val blocker = TrackerBlocker()
+    private val blockedUpdatePending = AtomicBoolean(false)
+    private val mainHandler = Handler(Looper.getMainLooper())
     private val feedState = FeedState()
     private var rendererGone = false
     private var pageLoaded = false
@@ -76,9 +88,10 @@ class MainActivity : ComponentActivity(), FeedEvents {
         dumper = DomDumper(applicationContext)
         rulesRepo = RulesRepository(applicationContext)
 
+        chromeClient = PureFeedChromeClient(this, this)
         webView = FeedWebView.create(this).apply {
-            webViewClient = PureFeedWebViewClient(this@MainActivity)
-            webChromeClient = PureFeedChromeClient(this@MainActivity, this@MainActivity)
+            webViewClient = PureFeedWebViewClient(this@MainActivity, blocker)
+            webChromeClient = chromeClient
             addJavascriptInterface(
                 FilterBridge(
                     onCounts = { feedState.hiddenCounts = it },
@@ -98,13 +111,27 @@ class MainActivity : ComponentActivity(), FeedEvents {
             combine(rulesRepo.state.map { it.rules }.distinctUntilChanged(), settingsRepo.settings, ::Pair).collect { (rules, settings) ->
                 currentRules = rules
                 currentSettings = settings
+                feedState.ruleLabels = ruleLabels(rules)
                 applyFilterConfig()
                 if (!pageLoaded) {
                     pageLoaded = true
                     // Restores the page and back history when the activity is recreated (e.g. light/dark switch).
                     val restored = savedWebView?.let { webView.restoreState(it) != null } == true
-                    if (!restored) webView.loadUrl(FeedWebView.HOME_URL)
+                    if (restored) {
+                        // Facebook lays the restored page out before the new theme settles,
+                        // leaving profile pictures misplaced; a reload fixes it.
+                        webView.reload()
+                    } else {
+                        webView.loadUrl(FeedWebView.HOME_URL)
+                    }
                 }
+            }
+        }
+
+        val defaultBlocklist = TrackerBlocker.parseList(assets.open("blocklist.txt").bufferedReader().use { it.readText() })
+        lifecycleScope.launch {
+            settingsRepo.blockSettings.collect { block ->
+                blocker.setDomains(if (block.enabled) block.domains ?: defaultBlocklist else emptyList())
             }
         }
 
@@ -117,6 +144,7 @@ class MainActivity : ComponentActivity(), FeedEvents {
             val settings by settingsRepo.settings.collectAsStateWithLifecycle(FilterSettings())
             val rulesState by rulesRepo.state.collectAsStateWithLifecycle()
             val rulesUrl by settingsRepo.rulesUrl.collectAsStateWithLifecycle("")
+            val blockSettings by settingsRepo.blockSettings.collectAsStateWithLifecycle(BlockSettings())
             var showSettings by rememberSaveable { mutableStateOf(false) }
             val updateSettings: ((FilterSettings) -> FilterSettings) -> Unit = { transform ->
                 lifecycleScope.launch { settingsRepo.update(transform) }
@@ -132,6 +160,11 @@ class MainActivity : ComponentActivity(), FeedEvents {
                                 url = rulesUrl,
                                 onSaveUrl = { url -> lifecycleScope.launch { saveRulesUrl(url) } },
                                 onCheckNow = { lifecycleScope.launch { rulesRepo.refresh(rulesUrl) } },
+                            ),
+                            block = BlockInfo(
+                                settings = blockSettings,
+                                defaults = defaultBlocklist,
+                                onChange = { transform -> lifecycleScope.launch { settingsRepo.updateBlock(transform) } },
                             ),
                             onBack = { showSettings = false },
                         )
@@ -174,6 +207,14 @@ class MainActivity : ComponentActivity(), FeedEvents {
         super.onDestroy()
     }
 
+    /** Rule id → label from rules.json, for the counter breakdown. */
+    private fun ruleLabels(rules: JsonObject): Map<String, String> =
+        listOf("rules", "userRules").flatMap { section ->
+            rules[section]?.jsonObject.orEmpty().map { (id, rule) ->
+                id to (rule.jsonObject["label"]?.jsonPrimitive?.content ?: id)
+            }
+        }.toMap()
+
     private fun applyFilterConfig() {
         val rules = currentRules ?: return
         val settings = currentSettings ?: return
@@ -191,6 +232,7 @@ class MainActivity : ComponentActivity(), FeedEvents {
      * leaves the app.
      */
     private fun goBack() {
+        if (chromeClient.exitFullscreen()) return
         val history = webView.copyBackForwardList()
         val current = history.currentIndex
         val fromAutoFeeds = autoFeedsIndex >= 0 && current >= 2 &&
@@ -221,6 +263,7 @@ class MainActivity : ComponentActivity(), FeedEvents {
     // ---- FeedEvents ----
 
     override fun onLoadingChanged(loading: Boolean) {
+        if (loading) feedState.blockedRequests = 0
         if (!loading) {
             feedState.refreshing = false
             if (loadingRankedHome) {
@@ -251,6 +294,15 @@ class MainActivity : ComponentActivity(), FeedEvents {
         } catch (e: ActivityNotFoundException) {
             Toast.makeText(this, R.string.no_browser, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    override fun onRequestBlocked() {
+        // Background thread, possibly many per second: coalesce into one UI update.
+        if (blockedUpdatePending.getAndSet(true)) return
+        mainHandler.postDelayed({
+            blockedUpdatePending.set(false)
+            feedState.blockedRequests = blocker.blockedCount
+        }, 300)
     }
 
     override fun onRendererGone() {
