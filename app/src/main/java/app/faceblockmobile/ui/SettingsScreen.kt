@@ -2,6 +2,8 @@ package app.faceblockmobile.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -74,7 +77,17 @@ fun SettingsScreen(
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).imePadding()) {
-            item { SectionHeader(R.string.section_rules) }
+            item { SectionHeader(R.string.section_feed) }
+            item {
+                RuleSwitch(R.string.start_on_feeds, R.string.start_on_feeds_desc, settings.startOnFeeds) { on ->
+                    onChange { it.copy(startOnFeeds = on) }
+                }
+            }
+            if (settings.startOnFeeds) {
+                item { FeedsFilterChips(settings.feedsFilter) { key -> onChange { it.copy(feedsFilter = key) } } }
+            }
+
+            item { HorizontalDivider(); SectionHeader(R.string.section_rules) }
             items(BUILT_IN_RULES, key = { it.id }) { rule ->
                 RuleSwitch(rule.title, rule.description, settings.isEnabled(rule.id)) { on ->
                     onChange { it.withEnabled(rule.id, on) }
@@ -140,6 +153,31 @@ private val BUILT_IN_RULES = listOf(
 
 private fun List<String>.addUnique(entry: String) =
     if (any { it.equals(entry, ignoreCase = true) }) this else this + entry
+
+private val FEEDS_FILTERS = listOf(
+    "all" to R.string.feeds_all,
+    "friends" to R.string.feeds_friends,
+    "favourites" to R.string.feeds_favourites,
+    "groups" to R.string.feeds_groups,
+    "pages" to R.string.feeds_pages,
+)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FeedsFilterChips(selected: String, onSelect: (String) -> Unit) {
+    FlowRow(
+        Modifier.padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FEEDS_FILTERS.forEach { (key, label) ->
+            FilterChip(
+                selected = selected == key,
+                onClick = { onSelect(key) },
+                label = { Text(stringResource(label)) },
+            )
+        }
+    }
+}
 
 @Composable
 private fun SectionHeader(title: Int) {

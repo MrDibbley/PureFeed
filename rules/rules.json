@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-17.2",
+  "updated": "2026-10-17.3",
   "notes": "Detection data for assets/filter.js. See docs/selectors.md for how each signal was found. All strings are matched case-insensitively after icon glyphs are stripped. Bump \"updated\" on every change (e.g. 2026-10-17.2): the app ignores downloaded files older than its built-in copy.",
 
   "units": {
@@ -59,6 +59,22 @@
       "match": { "anyText": ["Open app", "Get app", "Get Facebook for Android", "Use the app"] },
       "maxAncestorDepth": 10
     }
+  },
+
+  "feeds": {
+    "notes": "Feeds = Facebook's chronological feed. It has no URL; it is opened from the menu.",
+    "menuButtonSelector": "[aria-label=\"Facebook menu\"]",
+    "menuItemText": ["Feeds"],
+    "titleSelector": "[data-testid=\"nav_bar_component\"]",
+    "titleText": ["Feeds"],
+    "filterChips": {
+      "all": "All",
+      "favourites": "Favourites",
+      "friends": "Friends",
+      "groups": "Groups",
+      "pages": "Pages"
+    },
+    "timeoutMs": 10000
   },
 
   "userRules": {

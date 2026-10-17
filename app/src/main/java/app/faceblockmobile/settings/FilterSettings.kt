@@ -15,6 +15,10 @@ data class FilterSettings(
     val customCss: String = "",
     /** Outline matches instead of hiding them. */
     val debug: Boolean = false,
+    /** Switch the ranked home feed to Facebook's chronological "Feeds" screen on each load. */
+    val startOnFeeds: Boolean = true,
+    /** Feeds filter chip: a key of rules.json "feeds.filterChips" (all, favourites, friends, groups, pages). */
+    val feedsFilter: String = "all",
 ) {
     fun isEnabled(id: String) = enabled[id] ?: DEFAULT_ENABLED[id] ?: false
 

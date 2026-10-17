@@ -14,6 +14,9 @@
  *   this file ──FaceBlockBridge.onCounts(json)──▶ Kotlin   (hidden-post counter)
  *   this file ──FaceBlockBridge.onDomChunk(...)──▶ Kotlin  ("Dump DOM" debug action)
  *
+ * It also has one job that isn't filtering: "Start on Feeds" (see openFeeds() below),
+ * which switches the ranked home feed to Facebook's chronological Feeds screen.
+ *
  * WHERE TO EDIT WHEN FACEBOOK CHANGES THINGS
  *
  *   1. A label or selector changed (most common): edit rules.json, not this file.
@@ -49,6 +52,7 @@
   var ATTR_MATCH = 'data-fbm-match';   // id of the rule that matched, e.g. "sponsored"
   var ATTR_LABEL = 'data-fbm-label';   // human label shown in debug mode
   var ATTR_DEBUG = 'data-fbm-debug';   // set on <html> while debug mode is on
+  var ATTR_SWITCHING = 'data-fbm-switching'; // set on <html> while openFeeds() runs
   var BRIDGE = 'FaceBlockBridge';      // name of the @JavascriptInterface (FilterBridge.kt)
 
   var configJson = null;   // last configure() argument, to skip identical re-configures
@@ -57,6 +61,7 @@
   var fixedScanTimer = 0;
   var countTimer = 0;
   var lastCountsJson = '';
+  var feedsAttempted = false;   // openFeeds() runs at most once per page load
 
   // -------------------------------------------------------------------------
   // Text helpers
@@ -162,7 +167,10 @@
       fixedRules: [],   // page-level: hide the position:fixed container around some text
       colors: {},       // rule id → colour, for debug outlines
       debug: !!settings.debug,
-      customCss: settings.customCss || ''
+      customCss: settings.customCss || '',
+      feeds: rules.feeds || null,
+      startOnFeeds: !!settings.startOnFeeds,
+      feedsFilter: settings.feedsFilter || 'all'
     };
 
     Object.keys(rules.rules).forEach(function (id) {
@@ -220,7 +228,9 @@
       'html[' + ATTR_DEBUG + '] [' + ATTR_MATCH + ']::before {' +
         ' content: attr(' + ATTR_LABEL + '); position: absolute; top: 0; right: 0; z-index: 2147483647;' +
         ' background: #888; color: #fff; font: 600 11px/18px sans-serif; padding: 0 6px;' +
-        ' border-bottom-left-radius: 6px; pointer-events: none; }'
+        ' border-bottom-left-radius: 6px; pointer-events: none; }',
+      // While openFeeds() switches screens, hide the ranked feed so it doesn't flash.
+      'html[' + ATTR_SWITCHING + '] [data-type="vscroller"] { visibility: hidden !important; }'
     ];
     Object.keys(compiled.colors).forEach(function (id) {
       var color = compiled.colors[id];
@@ -434,6 +444,94 @@
   }
 
   // -------------------------------------------------------------------------
+  // Start on Feeds (chronological feed)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Facebook's chronological feed ("Feeds", formerly "Most recent") has no URL on
+   * m.facebook.com: every Most Recent URL redirects to the ranked feed. It can only
+   * be opened from the menu. So, once per page load, if the page is the ranked home
+   * feed, this taps ☰ → Feeds (→ a filter chip such as "Friends") for the user.
+   *
+   * This only navigates, the same as tapping. It changes no Facebook settings.
+   * Pressing Back from Feeds returns to the ranked feed, and it is not re-opened
+   * until the next full load (app start or pull to refresh).
+   *
+   * Selectors and labels live in rules.json "feeds". Every step gives up after
+   * feeds.timeoutMs, so a changed menu just leaves you on the normal feed.
+   */
+  function openFeeds() {
+    var f = compiled.feeds;
+    if (feedsAttempted || !compiled.startOnFeeds || !f) return;
+    // Only the first page of a load counts: opening a notification link and then
+    // tapping Home should show Home, not jump to Feeds.
+    feedsAttempted = true;
+    if (location.pathname !== '/' && location.pathname !== '/home.php') return;
+
+    var root = document.documentElement;
+    var deadline = Date.now() + (f.timeoutMs || 10000);
+    var wanted = function (list) { return list.map(function (t) { return t.toLowerCase(); }); };
+    var menuTexts = wanted(f.menuItemText);
+    var titleTexts = wanted(f.titleText);
+
+    function title() {
+      var el = document.querySelector(f.titleSelector);
+      return el ? clean(el.textContent) : '';
+    }
+    function onFeeds() { return titleTexts.indexOf(title()) >= 0; }
+
+    // TextArea with the given (cleaned) text, outside the nav bar title.
+    function findText(texts) {
+      var els = document.querySelectorAll(compiled.textSelector);
+      for (var i = 0; i < els.length; i++) {
+        if (texts.indexOf(clean(els[i].textContent)) >= 0 && !els[i].closest(f.titleSelector)) return els[i];
+      }
+      return null;
+    }
+
+    // Facebook's click handlers sit on the nearest ancestor with data-action-id.
+    function tap(el) {
+      var target = el;
+      for (var d = 0; d < 8 && target && !target.hasAttribute('data-action-id'); d++) target = target.parentElement;
+      (target && target.hasAttribute('data-action-id') ? target : el).click();
+    }
+
+    // Polls until find() returns something, then calls next(it). Gives up at the deadline.
+    function waitFor(find, next) {
+      var found = find();
+      if (found) return next(found);
+      if (Date.now() > deadline) return done();
+      setTimeout(function () { waitFor(find, next); }, 150);
+    }
+
+    function done() { root.removeAttribute(ATTR_SWITCHING); }
+
+    root.setAttribute(ATTR_SWITCHING, '');
+    setTimeout(done, (f.timeoutMs || 10000) + 500);   // never leave the feed hidden
+
+    waitFor(function () {
+      if (onFeeds()) return 'already';
+      return document.querySelector(f.menuButtonSelector);
+    }, function (menu) {
+      if (menu === 'already') return chooseFilter();
+      tap(menu);
+      waitFor(function () { return findText(menuTexts); }, function (item) {
+        tap(item);
+        waitFor(function () { return onFeeds(); }, chooseFilter);
+      });
+    });
+
+    function chooseFilter() {
+      var label = f.filterChips && f.filterChips[compiled.feedsFilter];
+      if (!label || compiled.feedsFilter === 'all') return done();
+      waitFor(function () { return findText([label.toLowerCase()]); }, function (chip) {
+        tap(chip);
+        setTimeout(done, 600);
+      });
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Debug: DOM dump
   // -------------------------------------------------------------------------
 
@@ -491,6 +589,7 @@
       applyStyles();
       startObserving();
       rescanAll(changed);
+      openFeeds();
     },
 
     dumpDom: dumpDom,
