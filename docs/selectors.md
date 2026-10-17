@@ -1,6 +1,6 @@
 # m.facebook.com selector research
 
-Findings from inspecting the **real Android WebView** running FaceBlockMobile, not
+Findings from inspecting the **real Android WebView** running PureFeed, not
 desktop Chrome emulation. Everything here is structural. No names or post content
 are recorded.
 
@@ -160,7 +160,7 @@ Debug builds call `WebView.setWebContentsDebuggingEnabled(true)`.
 
 **Option A, interactive:** plug in the phone, open the app, then open
 `chrome://inspect/#devices` in desktop Chrome and click **inspect** under
-FaceBlockMobile. You get full DevTools on the real WebView.
+PureFeed. You get full DevTools on the real WebView.
 
 **Option B, scripted** (what was used for this document):
 

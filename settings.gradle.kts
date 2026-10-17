@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FaceBlockMobile"
+rootProject.name = "PureFeed"
 include(":app")

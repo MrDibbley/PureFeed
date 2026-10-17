@@ -1,0 +1,4 @@
+<resources>
+    <!-- Debug builds (app.purefeed.debug) install alongside the release; this tells them apart. -->
+    <string name="app_name">PureFeed debug</string>
+</resources>

@@ -6,6 +6,10 @@ local.properties
 .DS_Store
 .kotlin/
 captures/
+# Signing keys never go in the repo
+*.jks
+*.keystore
+keystore.properties
 # DOM dumps contain other people's posts: never commit them
 dumps/
 *.dom.html

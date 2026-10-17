@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">FaceBlock</string>
+    <string name="app_name">PureFeed</string>
     <string name="no_browser">No browser installed to open this link</string>
 
     <string name="menu_settings">Filter settings</string>

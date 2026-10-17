@@ -4,21 +4,51 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Release signing. The key lives OUTSIDE the repo (default ~/keys/purefeed-release.jks,
+// override with -Ppurefeed.keystore=...). Its password is read from the macOS Keychain
+// item "purefeed-release-key" (see README), and only when a release task is requested,
+// so debug builds never touch the Keychain. No key file = unsigned release APK.
+val releaseKeystore = file(
+    providers.gradleProperty("purefeed.keystore")
+        .getOrElse("${System.getProperty("user.home")}/keys/purefeed-release.jks")
+)
+val wantsRelease = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+
 android {
-    namespace = "app.faceblockmobile"
+    namespace = "app.purefeed"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "app.faceblockmobile"
+        applicationId = "app.purefeed"
         minSdk = 26
         targetSdk = 37
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            if (wantsRelease && releaseKeystore.exists()) {
+                val password = providers.exec {
+                    commandLine("security", "find-generic-password", "-s", "purefeed-release-key", "-w")
+                }.standardOutput.asText.get().trim()
+                storeFile = releaseKeystore
+                storePassword = password
+                keyAlias = "purefeed"
+                keyPassword = password
+            }
+        }
     }
 
     buildTypes {
+        debug {
+            // Installs alongside the release build, labelled "PureFeed debug".
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = false
+            if (releaseKeystore.exists()) signingConfig = signingConfigs.getByName("release")
         }
     }
 

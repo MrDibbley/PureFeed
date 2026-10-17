@@ -1,5 +1,5 @@
 /*
- * FaceBlockMobile feed filter (assets/filter.js)
+ * PureFeed feed filter (assets/filter.js)
  * =============================================
  *
  * Injected into every m.facebook.com page by FilterInjector.kt. It hides feed
@@ -11,9 +11,9 @@
  *     rules    = the contents of rules.json (WHAT to look for: selectors, label text)
  *     settings = the user's choices (WHICH rules are on, keywords, muted names, debug)
  *
- *   this file ──FaceBlockBridge.onCounts(json)──▶ Kotlin   (hidden-post counter)
- *   this file ──FaceBlockBridge.onDomChunk(...)──▶ Kotlin  ("Dump DOM" debug action)
- *   this file ──FaceBlockBridge.onFeedsOpened()──▶ Kotlin   (so Back can skip the menu)
+ *   this file ──PureFeedBridge.onCounts(json)──▶ Kotlin   (hidden-post counter)
+ *   this file ──PureFeedBridge.onDomChunk(...)──▶ Kotlin  ("Dump DOM" debug action)
+ *   this file ──PureFeedBridge.onFeedsOpened()──▶ Kotlin   (so Back can skip the menu)
  *
  * It also has one job that isn't filtering: "Start on Feeds" (see openFeeds() below),
  * which switches the ranked home feed to Facebook's chronological Feeds screen.
@@ -54,7 +54,7 @@
   var ATTR_LABEL = 'data-fbm-label';   // human label shown in debug mode
   var ATTR_DEBUG = 'data-fbm-debug';   // set on <html> while debug mode is on
   var ATTR_SWITCHING = 'data-fbm-switching'; // set on <html> while openFeeds() runs
-  var BRIDGE = 'FaceBlockBridge';      // name of the @JavascriptInterface (FilterBridge.kt)
+  var BRIDGE = 'PureFeedBridge';      // name of the @JavascriptInterface (FilterBridge.kt)
 
   var configJson = null;   // last configure() argument, to skip identical re-configures
   var compiled = null;     // config turned into ready-to-run tests; see compile()
@@ -520,7 +520,7 @@
     }
     var play = function () {
       if (compiled && compiled.noAutoplay && !userJustTapped()) {
-        return Promise.reject(new DOMException('Autoplay blocked by FaceBlockMobile', 'NotAllowedError'));
+        return Promise.reject(new DOMException('Autoplay blocked by PureFeed', 'NotAllowedError'));
       }
       return originalPlay.apply(this, arguments);
     };
@@ -655,7 +655,7 @@
         }
       });
     });
-    var html = '<!-- FaceBlockMobile DOM dump | ' + location.pathname + ' | ' + new Date().toISOString() +
+    var html = '<!-- PureFeed DOM dump | ' + location.pathname + ' | ' + new Date().toISOString() +
       ' | ' + navigator.userAgent + ' -->\n' + clone.outerHTML;
     var size = 200000;
     var total = Math.ceil(html.length / size);

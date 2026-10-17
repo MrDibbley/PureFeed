@@ -17,7 +17,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.FaceBlockMobile">
+        android:theme="@style/Theme.PureFeed">
 
         <!--
             orientation/screenSize/keyboard changes are handled in place so the
