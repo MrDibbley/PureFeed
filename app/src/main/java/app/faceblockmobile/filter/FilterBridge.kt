@@ -18,6 +18,7 @@ import kotlinx.serialization.json.jsonPrimitive
 class FilterBridge(
     private val onCounts: (Map<String, Int>) -> Unit,
     private val onDomChunk: (requestId: String, index: Int, total: Int, chunk: String) -> Unit,
+    private val onFeedsOpened: () -> Unit,
 ) {
     private val main = Handler(Looper.getMainLooper())
 
@@ -32,6 +33,12 @@ class FilterBridge(
     @JavascriptInterface
     fun onDomChunk(requestId: String, index: Int, total: Int, chunk: String) {
         onDomChunk.invoke(requestId, index, total, chunk)
+    }
+
+    /** filter.js has just switched to the Feeds screen via the menu ("Start on Feeds"). */
+    @JavascriptInterface
+    fun onFeedsOpened() {
+        main.post { onFeedsOpened.invoke() }
     }
 
     companion object {

@@ -13,6 +13,7 @@
  *
  *   this file ──FaceBlockBridge.onCounts(json)──▶ Kotlin   (hidden-post counter)
  *   this file ──FaceBlockBridge.onDomChunk(...)──▶ Kotlin  ("Dump DOM" debug action)
+ *   this file ──FaceBlockBridge.onFeedsOpened()──▶ Kotlin   (so Back can skip the menu)
  *
  * It also has one job that isn't filtering: "Start on Feeds" (see openFeeds() below),
  * which switches the ranked home feed to Facebook's chronological Feeds screen.
@@ -164,10 +165,12 @@
       textSelector: rules.text.selector,
       headerLimit: rules.text.headerTextLimit || 5,
       unitRules: [],    // tested against each feed unit, in order; first match wins
+      sectionRules: [], // tested against feed-list children that AREN'T posts (e.g. the Stories tray)
       fixedRules: [],   // page-level: hide the position:fixed container around some text
       colors: {},       // rule id → colour, for debug outlines
       debug: !!settings.debug,
       customCss: settings.customCss || '',
+      noAutoplay: !!settings.noAutoplay,
       feeds: rules.feeds || null,
       startOnFeeds: !!settings.startOnFeeds,
       feedsFilter: settings.feedsFilter || 'all'
@@ -184,6 +187,8 @@
           texts: (rule.match.anyText || []).map(function (t) { return t.toLowerCase(); }),
           maxDepth: rule.maxAncestorDepth || 10
         });
+      } else if (rule.kind === 'section') {
+        c.sectionRules.push({ id: id, label: rule.label, test: compileMatchers(rule.match) });
       } else {
         c.unitRules.push({ id: id, label: rule.label, test: compileMatchers(rule.match) });
       }
@@ -336,6 +341,43 @@
   }
 
   // -------------------------------------------------------------------------
+  // Section rules: non-post strips in the feed list, e.g. the Stories tray
+  // -------------------------------------------------------------------------
+
+  /**
+   * The direct child of a feed list (vscroller) that contains el, if that child
+   * is NOT a post. Posts are handled by the unit rules above.
+   */
+  function sectionOf(el) {
+    while (el && el.parentElement && !el.parentElement.matches(compiled.parentSelector)) el = el.parentElement;
+    if (!el || !el.parentElement || el.matches(compiled.unitSelector)) return null;
+    return el;
+  }
+
+  /** Same idea as testUnit(), using rules.json rules with "kind": "section". */
+  function testSection(section) {
+    if (section.hasAttribute(ATTR_MATCH)) return;
+    var facts = unitFacts(section);
+    if (!facts.header.length) return;
+    for (var i = 0; i < compiled.sectionRules.length; i++) {
+      if (compiled.sectionRules[i].test(facts)) {
+        mark(section, compiled.sectionRules[i]);
+        return;
+      }
+    }
+  }
+
+  function allSections() {
+    var out = [];
+    document.querySelectorAll(compiled.parentSelector).forEach(function (list) {
+      Array.prototype.forEach.call(list.children, function (child) {
+        if (!child.matches(compiled.unitSelector)) out.push(child);
+      });
+    });
+    return out;
+  }
+
+  // -------------------------------------------------------------------------
   // Page-level ("fixed") rules, e.g. the "Open app" bar
   // -------------------------------------------------------------------------
 
@@ -404,6 +446,7 @@
       });
     }
     allUnits(document).forEach(testUnit);
+    if (compiled.sectionRules.length) allSections().forEach(testSection);
     scheduleFixedScan();
     scheduleCounts();
   }
@@ -415,12 +458,22 @@
    */
   function onMutations(records) {
     var touched = new Set();
+    var sections = new Set();
+    var checkSections = compiled.sectionRules.length > 0;
     for (var i = 0; i < records.length; i++) {
       var rec = records[i];
       var target = rec.target.nodeType === 1 ? rec.target : rec.target.parentElement;
       if (!target) continue;
       var unit = findUnit(target);
       if (unit) touched.add(unit);
+      else if (checkSections) {
+        var section = sectionOf(target);
+        if (section) sections.add(section);
+        for (var k = 0; k < rec.addedNodes.length; k++) {
+          var added = rec.addedNodes[k];
+          if (added.nodeType === 1 && (section = sectionOf(added))) sections.add(section);
+        }
+      }
       for (var j = 0; j < rec.addedNodes.length; j++) {
         var node = rec.addedNodes[j];
         if (node.nodeType !== 1) continue;
@@ -431,6 +484,7 @@
       }
     }
     touched.forEach(testUnit);
+    sections.forEach(testSection);
     scheduleFixedScan();
     scheduleCounts();
   }
@@ -444,6 +498,41 @@
   }
 
   // -------------------------------------------------------------------------
+  // No video autoplay
+  // -------------------------------------------------------------------------
+
+  /**
+   * Facebook starts feed videos itself, muted, by calling video.play() from
+   * script; there is no autoplay attribute to remove. So, while the setting is
+   * on, play() is refused unless the user has just tapped (the browser's
+   * "transient user activation", about 5 seconds after a tap). Tapping a video
+   * therefore still plays it.
+   *
+   * Installed once, at document start, before Facebook's scripts run. The
+   * setting is read on every call, so turning it off takes effect at once.
+   */
+  function installAutoplayBlock() {
+    var proto = window.HTMLMediaElement && HTMLMediaElement.prototype;
+    if (!proto || proto.play.__fbm) return;
+    var originalPlay = proto.play;
+    function userJustTapped() {
+      return !navigator.userActivation || navigator.userActivation.isActive;
+    }
+    var play = function () {
+      if (compiled && compiled.noAutoplay && !userJustTapped()) {
+        return Promise.reject(new DOMException('Autoplay blocked by FaceBlockMobile', 'NotAllowedError'));
+      }
+      return originalPlay.apply(this, arguments);
+    };
+    play.__fbm = true;
+    proto.play = play;
+    // Backstop for media that starts without play() (e.g. an autoplay attribute).
+    document.addEventListener('play', function (e) {
+      if (compiled && compiled.noAutoplay && !userJustTapped() && e.target.pause) e.target.pause();
+    }, true);
+  }
+
+  // -------------------------------------------------------------------------
   // Start on Feeds (chronological feed)
   // -------------------------------------------------------------------------
 
@@ -454,18 +543,22 @@
    * feed, this taps ☰ → Feeds (→ a filter chip such as "Friends") for the user.
    *
    * This only navigates, the same as tapping. It changes no Facebook settings.
-   * Pressing Back from Feeds returns to the ranked feed, and it is not re-opened
-   * until the next full load (app start or pull to refresh).
+   * The automatic taps leave history entries the WebView won't go back through
+   * (Chromium skips entries created without a real tap), so Kotlin is told
+   * (onFeedsOpened) and handles Back from Feeds by reloading the ranked feed.
+   * Feeds is not re-opened until the next full load (app start or pull to refresh).
    *
    * Selectors and labels live in rules.json "feeds". Every step gives up after
    * feeds.timeoutMs, so a changed menu just leaves you on the normal feed.
    */
   function openFeeds() {
     var f = compiled.feeds;
-    if (feedsAttempted || !compiled.startOnFeeds || !f) return;
-    // Only the first page of a load counts: opening a notification link and then
-    // tapping Home should show Home, not jump to Feeds.
+    // Only the first configure of a page load counts, even if the setting was off
+    // then: opening a notification link and then tapping Home should show Home, and
+    // the app turns the setting off for one load when Back returns to the ranked feed.
+    if (feedsAttempted) return;
     feedsAttempted = true;
+    if (!compiled.startOnFeeds || !f) return;
     if (location.pathname !== '/' && location.pathname !== '/home.php') return;
 
     var root = document.documentElement;
@@ -517,7 +610,11 @@
       tap(menu);
       waitFor(function () { return findText(menuTexts); }, function (item) {
         tap(item);
-        waitFor(function () { return onFeeds(); }, chooseFilter);
+        waitFor(function () { return onFeeds(); }, function () {
+          var bridge = window[BRIDGE];
+          if (bridge && bridge.onFeedsOpened) bridge.onFeedsOpened();
+          chooseFilter();
+        });
       });
     });
 
@@ -587,6 +684,7 @@
         compiled = compile(cfg);
       }
       applyStyles();
+      installAutoplayBlock();
       startObserving();
       rescanAll(changed);
       openFeeds();

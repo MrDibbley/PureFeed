@@ -14,6 +14,8 @@
     <string name="section_feed">Feed</string>
     <string name="start_on_feeds">Start on Feeds (most recent)</string>
     <string name="start_on_feeds_desc">Opens Facebook\'s chronological feed instead of the ranked one on each load. Press Back for the normal feed.</string>
+    <string name="no_autoplay">Don\'t autoplay videos</string>
+    <string name="no_autoplay_desc">Videos only play when you tap them</string>
     <string name="feeds_all">All</string>
     <string name="feeds_friends">Friends</string>
     <string name="feeds_favourites">Favourites</string>
@@ -30,6 +32,8 @@
     <string name="rule_reels_desc">The Reels carousel in the feed</string>
     <string name="rule_pymk">People you may know</string>
     <string name="rule_pymk_desc">Friend suggestion carousels</string>
+    <string name="rule_stories">Stories</string>
+    <string name="rule_stories_desc">The Stories strip at the top of the home feed</string>
     <string name="rule_memories">Memories</string>
     <string name="rule_memories_desc">\"On this day\" posts. Not yet verified on your feed: check with debug mode</string>
     <string name="rule_app_prompts">\"Open app\" prompts</string>

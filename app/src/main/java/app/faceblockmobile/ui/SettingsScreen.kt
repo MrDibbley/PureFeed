@@ -86,6 +86,11 @@ fun SettingsScreen(
             if (settings.startOnFeeds) {
                 item { FeedsFilterChips(settings.feedsFilter) { key -> onChange { it.copy(feedsFilter = key) } } }
             }
+            item {
+                RuleSwitch(R.string.no_autoplay, R.string.no_autoplay_desc, settings.noAutoplay) { on ->
+                    onChange { it.copy(noAutoplay = on) }
+                }
+            }
 
             item { HorizontalDivider(); SectionHeader(R.string.section_rules) }
             items(BUILT_IN_RULES, key = { it.id }) { rule ->
@@ -147,6 +152,7 @@ private val BUILT_IN_RULES = listOf(
     BuiltInRule(RuleIds.GROUPS, R.string.rule_groups, R.string.rule_groups_desc),
     BuiltInRule(RuleIds.REELS, R.string.rule_reels, R.string.rule_reels_desc),
     BuiltInRule(RuleIds.PYMK, R.string.rule_pymk, R.string.rule_pymk_desc),
+    BuiltInRule(RuleIds.STORIES, R.string.rule_stories, R.string.rule_stories_desc),
     BuiltInRule(RuleIds.MEMORIES, R.string.rule_memories, R.string.rule_memories_desc),
     BuiltInRule(RuleIds.APP_PROMPTS, R.string.rule_app_prompts, R.string.rule_app_prompts_desc),
 )

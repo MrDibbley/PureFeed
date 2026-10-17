@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
 import java.io.File
 
 class MainActivity : ComponentActivity(), FeedEvents {
@@ -54,6 +55,12 @@ class MainActivity : ComponentActivity(), FeedEvents {
     private val feedState = FeedState()
     private var rendererGone = false
     private var pageLoaded = false
+    /** History index of a Feeds screen that filter.js opened via the menu, or -1. */
+    private var autoFeedsIndex = -1
+    /** True while loading the ranked feed after Back from an auto-opened Feeds. */
+    private var loadingRankedHome = false
+    private var currentRules: JsonObject? = null
+    private var currentSettings: FilterSettings? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,6 +83,7 @@ class MainActivity : ComponentActivity(), FeedEvents {
                 FilterBridge(
                     onCounts = { feedState.hiddenCounts = it },
                     onDomChunk = { id, index, total, chunk -> dumper.onChunk(id, index, total, chunk, ::shareDump) },
+                    onFeedsOpened = { autoFeedsIndex = webView.copyBackForwardList().currentIndex },
                 ),
                 FilterBridge.NAME,
             )
@@ -88,7 +96,9 @@ class MainActivity : ComponentActivity(), FeedEvents {
         val savedWebView = savedInstanceState?.getBundle(KEY_WEBVIEW)
         lifecycleScope.launch {
             combine(rulesRepo.state.map { it.rules }.distinctUntilChanged(), settingsRepo.settings, ::Pair).collect { (rules, settings) ->
-                injector.update(rules, settings)
+                currentRules = rules
+                currentSettings = settings
+                applyFilterConfig()
                 if (!pageLoaded) {
                     pageLoaded = true
                     // Restores the page and back history when the activity is recreated (e.g. light/dark switch).
@@ -129,6 +139,7 @@ class MainActivity : ComponentActivity(), FeedEvents {
                         FeedScreen(
                             webView, feedState, settings.debug,
                             FeedActions(
+                                onBack = ::goBack,
                                 onRefresh = {
                                     feedState.refreshing = true
                                     webView.reload()
@@ -163,6 +174,40 @@ class MainActivity : ComponentActivity(), FeedEvents {
         super.onDestroy()
     }
 
+    private fun applyFilterConfig() {
+        val rules = currentRules ?: return
+        val settings = currentSettings ?: return
+        injector.update(rules, if (loadingRankedHome) settings.copy(startOnFeeds = false) else settings)
+    }
+
+    /**
+     * WebView back, except from a Feeds screen that "Start on Feeds" opened: there
+     * the user expects the ranked feed, but the history can't get them there.
+     * Chromium's history intervention marks entries created by script without a
+     * real tap (our automatic menu and Feeds taps) as skippable, so canGoBack() is
+     * false and goBackOrForward(-2) is refused, and Facebook's router turns a
+     * page-side history.go(-2) into the menu. So reload the home page with Start on
+     * Feeds held off for that one load, then drop the history so the next Back
+     * leaves the app.
+     */
+    private fun goBack() {
+        val history = webView.copyBackForwardList()
+        val current = history.currentIndex
+        val fromAutoFeeds = autoFeedsIndex >= 0 && current >= 2 &&
+            history.getItemAtIndex(current - 1).url.contains("/bookmarks")
+        when {
+            fromAutoFeeds -> {
+                autoFeedsIndex = -1
+                loadingRankedHome = true
+                applyFilterConfig()
+                webView.loadUrl(FeedWebView.HOME_URL)
+            }
+            webView.canGoBack() -> webView.goBack()
+            // Nothing to go back to: behave like the system Back on a launcher activity.
+            else -> moveTaskToBack(true)
+        }
+    }
+
     private suspend fun saveRulesUrl(url: String) {
         settingsRepo.setRulesUrl(url)
         if (url.isBlank()) rulesRepo.clearRemote() else rulesRepo.refresh(url.trim())
@@ -178,9 +223,15 @@ class MainActivity : ComponentActivity(), FeedEvents {
     override fun onLoadingChanged(loading: Boolean) {
         if (!loading) {
             feedState.refreshing = false
+            if (loadingRankedHome) {
+                // The ranked feed is up. Restore the real settings for future loads (this
+                // page already had its one Start on Feeds chance) and forget the history.
+                loadingRankedHome = false
+                webView.clearHistory()
+                applyFilterConfig()
+            }
             injector.onNavigation()
         }
-        feedState.canGoBack = webView.canGoBack()
     }
 
     override fun onProgressChanged(progress: Int) {
@@ -188,7 +239,6 @@ class MainActivity : ComponentActivity(), FeedEvents {
     }
 
     override fun onHistoryChanged(view: WebView, url: String?) {
-        feedState.canGoBack = view.canGoBack()
         // SPA navigation: Facebook swapped the screen without a page load.
         injector.onNavigation()
     }

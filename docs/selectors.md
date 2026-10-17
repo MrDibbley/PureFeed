@@ -89,6 +89,41 @@ index 1 is the subtitle line, and index 2–3 hold the "•" and the inline acti
 | "Get Facebook for Android / Browse faster" top bar | Not present on the logged-in feed. Seen only on the logged-out login page. | Low priority |
 | `#…` "This browser is not supported" | A fixed div with 0×0 size, always present | Ignore |
 
+### Stories tray (home feed)
+
+A vscroller child **without** `data-tracking-duration-id`, above the first post,
+containing a TextArea `Create story` and the story bubbles. It's matched by the
+`stories` rule (`"kind": "section"`), which tests non-post children of the feed
+list.
+
+### Feeds (chronological feed)
+
+- m.facebook.com has **no URL** for it. `/?sk=h_chr`, `/?filter=all&sk=h_chr`,
+  `/home.php?sk=h_chr`, `/feeds/`, `/?filter=friends&sk=h_chr` and `/recent/` all
+  redirect to the ranked feed (tested 2026-10-17).
+- It opens from the menu: `[aria-label="Facebook menu"]` (role=button,
+  `data-action-id`) → menu screen at `/bookmarks/` → a ServerTextArea `Feeds`
+  whose clickable ancestor has `data-action-id`. `element.click()` on those
+  ancestors works.
+- On the Feeds screen the URL is still `/`. It's recognised by the nav bar title:
+  `[data-testid="nav_bar_component"]` with text `Feeds`. Filter chips: `All`,
+  `Favourites`, `Friends`, `Groups`, `Pages`. Posts are newest first, with the
+  same unit markup, so all rules still apply.
+- **Back quirk:** the scripted taps create history entries Chromium marks as
+  skippable (no user activation), so `canGoBack()` is false and
+  `goBackOrForward(-2)` is refused. Facebook's router also turns `history.go(-2)`
+  into the menu. The app handles Back from an auto-opened Feeds by reloading `/`
+  with Start on Feeds held off for that load.
+
+### Video
+
+Feed videos are `<video playsinline disablepictureinpicture controlslist src=…>`
+inside the unit, with **no `autoplay` attribute**. Facebook starts them muted from
+script with `play()`. The no-autoplay option wraps `HTMLMediaElement.prototype.play`
+at document start and refuses calls without transient user activation. Verified:
+with it off, the visible video played while scrolling; with it on, playback didn't
+advance.
+
 ## Recommended rule strategy (implemented in `rules.json`)
 
 1. **Find units**: `[data-type="vscroller"] > [data-tracking-duration-id]`.

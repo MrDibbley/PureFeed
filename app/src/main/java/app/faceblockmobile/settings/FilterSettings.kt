@@ -19,6 +19,8 @@ data class FilterSettings(
     val startOnFeeds: Boolean = true,
     /** Feeds filter chip: a key of rules.json "feeds.filterChips" (all, favourites, friends, groups, pages). */
     val feedsFilter: String = "all",
+    /** Refuse video play() unless the user just tapped (filter.js installAutoplayBlock). */
+    val noAutoplay: Boolean = true,
 ) {
     fun isEnabled(id: String) = enabled[id] ?: DEFAULT_ENABLED[id] ?: false
 
@@ -31,6 +33,7 @@ data class FilterSettings(
             RuleIds.GROUPS to true,
             RuleIds.REELS to true,
             RuleIds.PYMK to true,
+            RuleIds.STORIES to true,
             RuleIds.MEMORIES to false,   // detection unverified, see docs/selectors.md
             RuleIds.APP_PROMPTS to true,
             RuleIds.KEYWORDS to true,
@@ -45,6 +48,7 @@ object RuleIds {
     const val GROUPS = "groups"
     const val REELS = "reels"
     const val PYMK = "pymk"
+    const val STORIES = "stories"
     const val MEMORIES = "memories"
     const val MUTED = "muted"
     const val APP_PROMPTS = "appPrompts"

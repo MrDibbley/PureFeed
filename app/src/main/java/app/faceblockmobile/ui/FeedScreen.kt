@@ -44,7 +44,6 @@ import app.faceblockmobile.R
 /** UI state driven by WebView callbacks. */
 @Stable
 class FeedState {
-    var canGoBack by mutableStateOf(false)
     var progress by mutableIntStateOf(0)
     var refreshing by mutableStateOf(false)
     /** Hidden items on the current page, per rule id (from filter.js). */
@@ -53,6 +52,7 @@ class FeedState {
 
 /** Actions offered by the filter button's menu. */
 class FeedActions(
+    val onBack: () -> Unit,
     val onRefresh: () -> Unit,
     val onOpenSettings: () -> Unit,
     val onToggleDebug: () -> Unit,
@@ -61,7 +61,9 @@ class FeedActions(
 
 @Composable
 fun FeedScreen(webView: WebView, state: FeedState, debug: Boolean, actions: FeedActions) {
-    BackHandler(enabled = state.canGoBack) { webView.goBack() }
+    // Always on: WebView.canGoBack() is checked at press time, because during Facebook's
+    // in-page navigations it reports stale values when doUpdateVisitedHistory fires.
+    BackHandler(onBack = actions.onBack)
 
     Box(
         Modifier
