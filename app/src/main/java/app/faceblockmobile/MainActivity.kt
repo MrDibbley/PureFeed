@@ -2,6 +2,7 @@ package app.faceblockmobile
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.net.Uri
 import android.os.Bundle
 import android.view.ViewGroup
@@ -31,6 +32,12 @@ class MainActivity : ComponentActivity(), FeedEvents {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Debug builds expose the WebView to chrome://inspect over USB, for selector research
+        // against the real Android markup.
+        if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+            WebView.setWebContentsDebuggingEnabled(true)
+        }
 
         webView = FeedWebView.create(this).apply {
             webViewClient = PureFeedWebViewClient(this@MainActivity)
