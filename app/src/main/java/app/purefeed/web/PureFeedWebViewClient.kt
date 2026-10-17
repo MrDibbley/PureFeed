@@ -41,8 +41,12 @@ class PureFeedWebViewClient(
         if (!request.isForMainFrame) return false
         return when (val d = UrlPolicy.decide(request.url.toString())) {
             UrlPolicy.Decision.Internal -> false
-            UrlPolicy.Decision.Block -> true
+            UrlPolicy.Decision.Block -> {
+                Log.d("PureFeed", "Blocked navigation to ${request.url.scheme}://${request.url.host}${request.url.path}")
+                true
+            }
             is UrlPolicy.Decision.External -> {
+                Log.d("PureFeed", "Opening externally: ${request.url.host}")
                 events.onOpenExternal(d.url)
                 true
             }

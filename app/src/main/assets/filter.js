@@ -234,8 +234,13 @@
         ' content: attr(' + ATTR_LABEL + '); position: absolute; top: 0; right: 0; z-index: 2147483647;' +
         ' background: #888; color: #fff; font: 600 11px/18px sans-serif; padding: 0 6px;' +
         ' border-bottom-left-radius: 6px; pointer-events: none; }',
-      // While openFeeds() switches screens, hide the ranked feed so it doesn't flash.
-      'html[' + ATTR_SWITCHING + '] [data-type="vscroller"] { visibility: hidden !important; }'
+      // While openFeeds() switches screens, cover the page with an "Opening Feeds…"
+      // message (rather than a blank screen) so the ranked feed and the menu don't
+      // flash past. pointer-events: none, so it can never trap the user.
+      'html[' + ATTR_SWITCHING + ']::after { content: "Opening Feeds\u2026"; position: fixed; inset: 0;' +
+        ' z-index: 2147483647; display: flex; align-items: center; justify-content: center;' +
+        ' background: #fff; color: #65676b; font: 500 16px/1.4 sans-serif; pointer-events: none; }',
+      '@media (prefers-color-scheme: dark) { html[' + ATTR_SWITCHING + ']::after { background: #18191a; color: #b0b3b8; } }'
     ];
     Object.keys(compiled.colors).forEach(function (id) {
       var color = compiled.colors[id];
@@ -548,8 +553,16 @@
    * (onFeedsOpened) and handles Back from Feeds by reloading the ranked feed.
    * Feeds is not re-opened until the next full load (app start or pull to refresh).
    *
-   * Selectors and labels live in rules.json "feeds". Every step gives up after
-   * feeds.timeoutMs, so a changed menu just leaves you on the normal feed.
+   * Two phases, so a slow or unexpected page is never hidden:
+   *   1. Wait (up to feeds.timeoutMs) for the menu button, which only exists on the
+   *      logged-in home screen. Nothing is covered yet. Login, "save your login",
+   *      checkpoint and logged-out pages never get past this.
+   *   2. Cover the page with "Opening Feeds…" and tap through, giving up after
+   *      feeds.switchTimeoutMs. Whatever page was reached is then shown.
+   * (A fresh login made phase 2 slow enough to look like a blank screen when the
+   * cover started immediately and lasted up to 10s.)
+   *
+   * Selectors, labels and timeouts live in rules.json "feeds".
    */
   function openFeeds() {
     var f = compiled.feeds;
@@ -562,7 +575,7 @@
     if (location.pathname !== '/' && location.pathname !== '/home.php') return;
 
     var root = document.documentElement;
-    var deadline = Date.now() + (f.timeoutMs || 10000);
+    var deadline = Date.now() + (f.timeoutMs || 10000);   // phase 1; reset for phase 2
     var wanted = function (list) { return list.map(function (t) { return t.toLowerCase(); }); };
     var menuTexts = wanted(f.menuItemText);
     var titleTexts = wanted(f.titleText);
@@ -599,14 +612,17 @@
 
     function done() { root.removeAttribute(ATTR_SWITCHING); }
 
-    root.setAttribute(ATTR_SWITCHING, '');
-    setTimeout(done, (f.timeoutMs || 10000) + 500);   // never leave the feed hidden
-
+    // Phase 1: wait for the logged-in home screen, without covering anything.
     waitFor(function () {
       if (onFeeds()) return 'already';
       return document.querySelector(f.menuButtonSelector);
     }, function (menu) {
       if (menu === 'already') return chooseFilter();
+      // Phase 2: cover, tap through, and give up after switchTimeoutMs.
+      var switchMs = f.switchTimeoutMs || 6000;
+      deadline = Date.now() + switchMs;
+      root.setAttribute(ATTR_SWITCHING, '');
+      setTimeout(done, switchMs + 300);   // never leave the page covered
       tap(menu);
       waitFor(function () { return findText(menuTexts); }, function (item) {
         tap(item);

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-17.4",
+  "updated": "2026-10-17.5",
   "notes": "Detection data for assets/filter.js. See docs/selectors.md for how each signal was found. All strings are matched case-insensitively after icon glyphs are stripped. Bump \"updated\" on every change (e.g. 2026-10-17.2): the app ignores downloaded files older than its built-in copy.",
 
   "units": {
@@ -80,7 +80,8 @@
       "groups": "Groups",
       "pages": "Pages"
     },
-    "timeoutMs": 10000
+    "timeoutMs": 10000,
+    "switchTimeoutMs": 6000
   },
 
   "userRules": {
