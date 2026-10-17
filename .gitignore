@@ -13,3 +13,6 @@ keystore.properties
 # DOM dumps contain other people's posts: never commit them
 dumps/
 *.dom.html
+
+# Release APKs (published on GitHub Releases, not committed)
+dist/

@@ -67,8 +67,10 @@ apksigner verify --print-certs PureFeed-1.0.0.apk
 `Signer #1 certificate SHA-256 digest` must be:
 
 ```
-<filled in at first release>
+6a:d2:81:ff:b9:d0:7d:a2:32:0a:ac:6a:fa:89:d6:15:be:29:bc:ce:52:16:66:49:0e:c6:71:81:3f:fd:3b:88
 ```
+
+(`apksigner` prints it without colons: `6ad281ffb9d07da2320aac6afa89d615be29bcce521666490ec671813ffd3b88`.)
 
 Android itself refuses to install an update signed with a different key.
 
