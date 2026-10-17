@@ -5,6 +5,7 @@ import android.content.Context
 import android.webkit.CookieManager
 import android.webkit.WebSettings
 import android.webkit.WebView
+import androidx.webkit.UserAgentMetadata
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 
@@ -35,6 +36,29 @@ object FeedWebView {
         // a fallback for pages that have no dark styles of their own.
         if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
             WebSettingsCompat.setAlgorithmicDarkeningAllowed(settings, true)
+        }
+
+        // Client hints (sec-ch-ua) list "Android WebView" as a brand, which tells Facebook this
+        // is an app rather than Chrome (seen in the 2026-10-17 header capture). Report
+        // "Google Chrome" instead so they agree with the user agent. Model and platform version
+        // stay empty, matching the generic "Android 10; K" user agent.
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.USER_AGENT_METADATA)) {
+            val metadata = WebSettingsCompat.getUserAgentMetadata(settings)
+            val brands = metadata.brandVersionList.map { brand ->
+                if (brand.brand == "Android WebView") {
+                    UserAgentMetadata.BrandVersion.Builder(brand).setBrand("Google Chrome").build()
+                } else {
+                    brand
+                }
+            }
+            WebSettingsCompat.setUserAgentMetadata(
+                settings,
+                UserAgentMetadata.Builder(metadata)
+                    .setBrandVersionList(brands)
+                    .setModel("")
+                    .setPlatformVersion("")
+                    .build(),
+            )
         }
 
         val webView = this
