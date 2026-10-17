@@ -1,0 +1,11 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+.kotlin/
+captures/
+# DOM dumps contain other people's posts: never commit them
+dumps/
+*.dom.html

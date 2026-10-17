@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">FaceBlock</string>
+    <string name="no_browser">No browser installed to open this link</string>
+</resources>
