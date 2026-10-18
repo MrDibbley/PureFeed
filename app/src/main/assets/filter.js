@@ -175,6 +175,7 @@
       debug: !!settings.debug,
       customCss: settings.customCss || '',
       noAutoplay: !!settings.noAutoplay,
+      videoBox: (rules.video && rules.video.containerSelector) || '[data-mcomponent="MVideo"]',
       feeds: rules.feeds || null,
       startOnFeeds: !!settings.startOnFeeds,
       feedsFilter: settings.feedsFilter || 'all'
@@ -528,16 +529,37 @@
    *
    * Installed once, at document start, before Facebook's scripts run. The
    * setting is read on every call, so turning it off takes effect at once.
+   *
+   * Thumbnails: Facebook shows a thumbnail <img> until the post is fully in view,
+   * then hides it (display: none) and shows the <video>, expecting it to play. A
+   * paused video with no poster gets the WebView's grey play-button placeholder,
+   * so when a start is refused, keepThumbnail() makes that hidden image the poster.
    */
   function installAutoplayBlock() {
     var proto = window.HTMLMediaElement && HTMLMediaElement.prototype;
     if (!proto || proto.play.__fbm) return;
     var originalPlay = proto.play;
+
+    // Poster = the thumbnail <img> Facebook left inside the video's container
+    // (rules.json "video.containerSelector"), else the nearest image a few levels up.
+    function keepThumbnail(v) {
+      if (!v || v.tagName !== 'VIDEO' || v.getAttribute('poster')) return;
+      var box = (compiled && v.closest(compiled.videoBox)) || v.parentElement;
+      for (var d = 0; box && d < 3; d++, box = box.parentElement) {
+        var img = box.querySelector('img');
+        if (img && (img.currentSrc || img.src)) {
+          v.setAttribute('poster', img.currentSrc || img.src);
+          return;
+        }
+      }
+    }
+
     function userJustTapped() {
       return !navigator.userActivation || navigator.userActivation.isActive;
     }
     var play = function () {
       if (compiled && compiled.noAutoplay && !userJustTapped()) {
+        keepThumbnail(this);
         return Promise.reject(new DOMException('Autoplay blocked by PureFeed', 'NotAllowedError'));
       }
       return originalPlay.apply(this, arguments);
@@ -546,7 +568,10 @@
     proto.play = play;
     // Backstop for media that starts without play() (e.g. an autoplay attribute).
     document.addEventListener('play', function (e) {
-      if (compiled && compiled.noAutoplay && !userJustTapped() && e.target.pause) e.target.pause();
+      if (compiled && compiled.noAutoplay && !userJustTapped() && e.target.pause) {
+        e.target.pause();
+        keepThumbnail(e.target);
+      }
     }, true);
   }
 

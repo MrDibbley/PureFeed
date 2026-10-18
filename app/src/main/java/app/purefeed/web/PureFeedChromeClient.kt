@@ -3,6 +3,7 @@ package app.purefeed.web
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.view.View
@@ -43,6 +44,15 @@ class PureFeedChromeClient(
     override fun onProgressChanged(view: WebView, newProgress: Int) {
         events.onProgressChanged(newProgress)
     }
+
+    /**
+     * A video with no frame loaded yet would show the WebView's own grey play-button
+     * placeholder. That happens on every feed video while autoplay is blocked, because
+     * Facebook swaps its thumbnail for the player as the video scrolls into view. A
+     * transparent poster lets the page's own artwork (or nothing) show instead.
+     */
+    override fun getDefaultVideoPoster(): Bitmap =
+        Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
 
     // ---- Full-screen video: the page hands us a view to show over everything ----
 
