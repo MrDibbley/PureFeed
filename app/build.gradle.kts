@@ -23,7 +23,9 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = 2
-        versionName = "1.0.1"
+        // -Ppurefeed.versionName=1.0.0-test builds a release that thinks it's older, to test
+        // the in-app updater end to end against the real latest release. Never publish one.
+        versionName = providers.gradleProperty("purefeed.versionName").getOrElse("1.0.1")
     }
 
     signingConfigs {

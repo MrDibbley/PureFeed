@@ -64,10 +64,11 @@ class FeedActions(
     val onOpenSettings: () -> Unit,
     val onToggleDebug: () -> Unit,
     val onDumpDom: () -> Unit,
+    val onCheckUpdates: () -> Unit,
 )
 
 @Composable
-fun FeedScreen(webView: WebView, state: FeedState, debug: Boolean, actions: FeedActions) {
+fun FeedScreen(webView: WebView, state: FeedState, debug: Boolean, version: String, actions: FeedActions) {
     // Always on: WebView.canGoBack() is checked at press time, because during Facebook's
     // in-page navigations it reports stale values when doUpdateVisitedHistory fires.
     BackHandler(onBack = actions.onBack)
@@ -104,6 +105,7 @@ fun FeedScreen(webView: WebView, state: FeedState, debug: Boolean, actions: Feed
         FilterButton(
             state = state,
             debug = debug,
+            version = version,
             actions = actions,
             modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
         )
@@ -112,7 +114,7 @@ fun FeedScreen(webView: WebView, state: FeedState, debug: Boolean, actions: Feed
 
 /** Small translucent pill: filter icon + hidden count. Tap for the menu. */
 @Composable
-private fun FilterButton(state: FeedState, debug: Boolean, actions: FeedActions, modifier: Modifier) {
+private fun FilterButton(state: FeedState, debug: Boolean, version: String, actions: FeedActions, modifier: Modifier) {
     var menuOpen by remember { mutableStateOf(false) }
     val hidden = state.hiddenCounts.values.sum()
     val description = stringResource(R.string.filter_button, hidden)
@@ -152,6 +154,17 @@ private fun FilterButton(state: FeedState, debug: Boolean, actions: FeedActions,
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.menu_reload)) },
                 onClick = { menuOpen = false; actions.onRefresh() },
+            )
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.menu_check_updates)) },
+                onClick = { menuOpen = false; actions.onCheckUpdates() },
+            )
+            Text(
+                stringResource(R.string.menu_version, version),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
     }

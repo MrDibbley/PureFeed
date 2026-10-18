@@ -31,12 +31,17 @@ import app.purefeed.filter.RulesRepository
 import app.purefeed.settings.BlockSettings
 import app.purefeed.settings.FilterSettings
 import app.purefeed.settings.SettingsRepository
+import app.purefeed.settings.UpdateSettings
+import app.purefeed.update.UpdateController
 import app.purefeed.ui.FeedActions
 import app.purefeed.ui.FeedScreen
 import app.purefeed.ui.FeedState
 import app.purefeed.ui.BlockInfo
 import app.purefeed.ui.RulesInfo
 import app.purefeed.ui.SettingsScreen
+import app.purefeed.ui.UpdateActions
+import app.purefeed.ui.UpdateDialog
+import app.purefeed.ui.UpdatesInfo
 import app.purefeed.ui.theme.PureFeedTheme
 import app.purefeed.web.FeedEvents
 import app.purefeed.web.FeedWebView
@@ -61,6 +66,7 @@ class MainActivity : ComponentActivity(), FeedEvents {
     private lateinit var dumper: DomDumper
     private lateinit var rulesRepo: RulesRepository
     private lateinit var chromeClient: PureFeedChromeClient
+    private lateinit var updates: UpdateController
     private val blocker = TrackerBlocker()
     private val blockedUpdatePending = AtomicBoolean(false)
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -87,6 +93,7 @@ class MainActivity : ComponentActivity(), FeedEvents {
         settingsRepo = SettingsRepository(applicationContext)
         dumper = DomDumper(applicationContext)
         rulesRepo = RulesRepository(applicationContext)
+        updates = UpdateController(applicationContext, lifecycleScope, settingsRepo)
 
         chromeClient = PureFeedChromeClient(this, this)
         webView = FeedWebView.create(this).apply {
@@ -135,9 +142,11 @@ class MainActivity : ComponentActivity(), FeedEvents {
             }
         }
 
-        // Check the remote rules URL once per launch (cheap: conditional request with ETag).
+        // Once per launch: the remote rules URL (cheap: conditional request with ETag), and
+        // a new app release (at most once a day, quiet unless there is one).
         if (savedInstanceState == null) {
             lifecycleScope.launch { rulesRepo.refresh(settingsRepo.rulesUrl.first()) }
+            updates.checkOnLaunch()
         }
 
         setContent {
@@ -145,6 +154,7 @@ class MainActivity : ComponentActivity(), FeedEvents {
             val rulesState by rulesRepo.state.collectAsStateWithLifecycle()
             val rulesUrl by settingsRepo.rulesUrl.collectAsStateWithLifecycle("")
             val blockSettings by settingsRepo.blockSettings.collectAsStateWithLifecycle(BlockSettings())
+            val updatePrefs by settingsRepo.updateSettings.collectAsStateWithLifecycle(UpdateSettings())
             var showSettings by rememberSaveable { mutableStateOf(false) }
             val updateSettings: ((FilterSettings) -> FilterSettings) -> Unit = { transform ->
                 lifecycleScope.launch { settingsRepo.update(transform) }
@@ -161,6 +171,12 @@ class MainActivity : ComponentActivity(), FeedEvents {
                                 onSaveUrl = { url -> lifecycleScope.launch { saveRulesUrl(url) } },
                                 onCheckNow = { lifecycleScope.launch { rulesRepo.refresh(rulesUrl) } },
                             ),
+                            updates = UpdatesInfo(
+                                version = updates.installedVersion,
+                                autoCheck = updatePrefs.autoCheck,
+                                onAutoCheck = { on -> lifecycleScope.launch { settingsRepo.updateUpdateSettings { it.copy(autoCheck = on) } } },
+                                onCheckNow = updates::checkNow,
+                            ),
                             block = BlockInfo(
                                 settings = blockSettings,
                                 defaults = defaultBlocklist,
@@ -170,7 +186,7 @@ class MainActivity : ComponentActivity(), FeedEvents {
                         )
                     } else {
                         FeedScreen(
-                            webView, feedState, settings.debug,
+                            webView, feedState, settings.debug, updates.installedVersion,
                             FeedActions(
                                 onBack = ::goBack,
                                 onRefresh = {
@@ -180,9 +196,22 @@ class MainActivity : ComponentActivity(), FeedEvents {
                                 onOpenSettings = { showSettings = true },
                                 onToggleDebug = { updateSettings { it.copy(debug = !it.debug) } },
                                 onDumpDom = { injector.dumpDom(dumper.begin()) },
+                                onCheckUpdates = updates::checkNow,
                             ),
                         )
                     }
+                    UpdateDialog(
+                        state = updates.state,
+                        installedVersion = updates.installedVersion,
+                        actions = UpdateActions(
+                            update = updates::update,
+                            later = updates::later,
+                            skip = updates::skip,
+                            dismiss = updates::dismiss,
+                            openInstallPermission = updates::openInstallPermission,
+                            openReleasePage = { release -> onOpenExternal(release.pageUrl) },
+                        ),
+                    )
                 }
             }
         }
@@ -193,6 +222,12 @@ class MainActivity : ComponentActivity(), FeedEvents {
         if (!rendererGone) {
             outState.putBundle(KEY_WEBVIEW, Bundle().also { webView.saveState(it) })
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Back from "Install unknown apps": carry on with a waiting update.
+        updates.onResume()
     }
 
     override fun onPause() {

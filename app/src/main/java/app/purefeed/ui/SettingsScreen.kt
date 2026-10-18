@@ -57,6 +57,14 @@ class RulesInfo(
     val onCheckNow: () -> Unit,
 )
 
+/** App update settings for the "App updates" section. */
+class UpdatesInfo(
+    val version: String,
+    val autoCheck: Boolean,
+    val onAutoCheck: (Boolean) -> Unit,
+    val onCheckNow: () -> Unit,
+)
+
 /** Tracker blocking settings plus the bundled default list. */
 class BlockInfo(
     val settings: BlockSettings,
@@ -73,6 +81,7 @@ fun SettingsScreen(
     onChange: ((FilterSettings) -> FilterSettings) -> Unit,
     rules: RulesInfo,
     block: BlockInfo,
+    updates: UpdatesInfo,
     onBack: () -> Unit,
 ) {
     var showBlocklist by rememberSaveable { mutableStateOf(false) }
@@ -173,6 +182,24 @@ fun SettingsScreen(
 
             item { HorizontalDivider(); SectionHeader(R.string.section_rules_source) }
             item { RulesSourceEditor(rules) }
+
+            item { HorizontalDivider(); SectionHeader(R.string.section_updates) }
+            item {
+                RuleSwitch(R.string.update_auto, R.string.update_auto_desc, updates.autoCheck, updates.onAutoCheck)
+            }
+            item {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.update_version_line, updates.version),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedButton(onClick = updates.onCheckNow) { Text(stringResource(R.string.rules_check_now)) }
+                }
+            }
 
             item { HorizontalDivider(); SectionHeader(R.string.section_debug) }
             item {

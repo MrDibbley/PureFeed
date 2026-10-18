@@ -50,6 +50,15 @@ data class BlockSettings(
     val domains: List<String>? = null,
 )
 
+/** App update checks (UpdateController). Not sent to the page. */
+@Serializable
+data class UpdateSettings(
+    val autoCheck: Boolean = true,
+    val lastCheckMs: Long = 0,
+    /** A version the user chose to skip; automatic checks stay quiet about it. */
+    val skippedVersion: String? = null,
+)
+
 object RuleIds {
     const val SPONSORED = "sponsored"
     const val SUGGESTED = "suggested"
