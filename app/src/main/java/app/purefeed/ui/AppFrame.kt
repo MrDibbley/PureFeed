@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -41,7 +42,10 @@ import app.purefeed.ui.theme.LocalPureFeedColors
 /**
  * PureFeed's own navigation around the web feed (the redesign): a top bar, feed chips
  * and a bottom bar. Each control drives Facebook's page through filter.js
- * (__fbm.navigate / __fbm.feedsFilter); Facebook's own header and tabs are hidden.
+ * (__fbm.navigate / __fbm.feedsChip); Facebook's own header and tabs are hidden.
+ *
+ * Each bar sits on its own graphicsLayer, so when the WebView repaints (every scroll
+ * frame) Android reuses the bars' recorded drawing instead of re-recording it.
  */
 
 /** Bottom-bar destinations, matched to Facebook's tabs by rules.json "nav". */
@@ -66,7 +70,7 @@ val FEED_CHIPS = listOf(
 fun FrameTopBar(hidden: () -> Int, onFilter: () -> Unit, onSearch: () -> Unit, filterMenu: @Composable () -> Unit) {
     val c = LocalPureFeedColors.current
     Row(
-        Modifier.fillMaxWidth().height(60.dp).background(c.ground).padding(start = 16.dp, end = 4.dp),
+        Modifier.graphicsLayer().fillMaxWidth().height(60.dp).background(c.ground).padding(start = 16.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -107,7 +111,7 @@ private fun HiddenChip(hiddenOf: () -> Int, onFilter: () -> Unit, filterMenu: @C
 @Composable
 fun FrameFeedChips(selected: String?, onSelect: (String) -> Unit) {
     val c = LocalPureFeedColors.current
-    Column {
+    Column(Modifier.graphicsLayer()) {
         Row(
             Modifier.fillMaxWidth().height(52.dp).background(c.ground).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -137,7 +141,7 @@ fun FrameBottomBar(activeOf: () -> String?, badgesOf: () -> Map<String, Int>, on
     val c = LocalPureFeedColors.current
     val active = activeOf()
     val badges = badgesOf()
-    Column(Modifier.background(c.bar)) {
+    Column(Modifier.graphicsLayer().background(c.bar)) {
         HorizontalDivider(color = c.line.copy(alpha = 0.6f))
         Row(Modifier.fillMaxWidth().height(68.dp)) {
             NavTarget.entries.forEach { target ->
