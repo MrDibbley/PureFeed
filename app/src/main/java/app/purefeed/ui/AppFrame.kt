@@ -63,7 +63,7 @@ val FEED_CHIPS = listOf(
 )
 
 @Composable
-fun FrameTopBar(hidden: Int, onFilter: () -> Unit, onSearch: () -> Unit, filterMenu: @Composable () -> Unit) {
+fun FrameTopBar(hidden: () -> Int, onFilter: () -> Unit, onSearch: () -> Unit, filterMenu: @Composable () -> Unit) {
     val c = LocalPureFeedColors.current
     Row(
         Modifier.fillMaxWidth().height(60.dp).background(c.ground).padding(start = 16.dp, end = 4.dp),
@@ -73,6 +73,18 @@ fun FrameTopBar(hidden: Int, onFilter: () -> Unit, onSearch: () -> Unit, filterM
         Icon(painterResource(R.drawable.ic_logo), contentDescription = null, tint = androidx.compose.ui.graphics.Color.Unspecified, modifier = Modifier.size(26.dp))
         Text(stringResource(R.string.app_name_brand), color = c.text, fontSize = 22.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp)
         Spacer(Modifier.weight(1f))
+        HiddenChip(hidden, onFilter, filterMenu)
+        IconButton(onClick = onSearch) {
+            Icon(painterResource(R.drawable.ic_nav_search), contentDescription = stringResource(R.string.frame_search), tint = c.text)
+        }
+    }
+}
+
+/** The "N hidden" chip; reads the count itself so only it recomposes as the count changes. */
+@Composable
+private fun HiddenChip(hiddenOf: () -> Int, onFilter: () -> Unit, filterMenu: @Composable () -> Unit) {
+    val c = LocalPureFeedColors.current
+    val hidden = hiddenOf()
         Box {
             val description = stringResource(R.string.filter_button, hidden)
             Surface(
@@ -90,10 +102,6 @@ fun FrameTopBar(hidden: Int, onFilter: () -> Unit, onSearch: () -> Unit, filterM
             }
             filterMenu()
         }
-        IconButton(onClick = onSearch) {
-            Icon(painterResource(R.drawable.ic_nav_search), contentDescription = stringResource(R.string.frame_search), tint = c.text)
-        }
-    }
 }
 
 @Composable
@@ -125,8 +133,10 @@ fun FrameFeedChips(selected: String?, onSelect: (String) -> Unit) {
 }
 
 @Composable
-fun FrameBottomBar(active: String?, badges: Map<String, Int>, onSelect: (NavTarget) -> Unit) {
+fun FrameBottomBar(activeOf: () -> String?, badgesOf: () -> Map<String, Int>, onSelect: (NavTarget) -> Unit) {
     val c = LocalPureFeedColors.current
+    val active = activeOf()
+    val badges = badgesOf()
     Column(Modifier.background(c.bar)) {
         HorizontalDivider(color = c.line.copy(alpha = 0.6f))
         Row(Modifier.fillMaxWidth().height(68.dp)) {

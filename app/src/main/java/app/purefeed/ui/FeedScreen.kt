@@ -107,26 +107,29 @@ fun FeedScreen(webView: WebView, state: FeedState, debug: Boolean, version: Stri
         return
     }
 
+    // State is read inside the pieces that show it (lambdas, small composables), so a new
+    // hidden count, badge or load-progress value recomposes only that piece, not the
+    // screen around the WebView. (Benchmark: slow-UI-thread frames 490 vs 290 without.)
     var menuOpen by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         FrameTopBar(
-            hidden = state.hiddenCounts.values.sum(),
+            hidden = { state.hiddenCounts.values.sum() },
             onFilter = { menuOpen = true },
             onSearch = { actions.onNavigate("search") },
             filterMenu = { FilterMenu(menuOpen, { menuOpen = false }, state, debug, version, actions) },
         )
-        if (state.onFeedScreen) FrameFeedChips(state.feedsChip, actions.onFeedsChip)
+        FeedChipsSlot(state, actions.onFeedsChip)
         Box(Modifier.weight(1f).fillMaxWidth()) {
             WebArea(webView, state, actions)
         }
-        FrameBottomBar(state.navActive, state.navBadges) { actions.onNavigate(it.key) }
+        FrameBottomBar({ state.navActive }, { state.navBadges }) { actions.onNavigate(it.key) }
     }
 }
 
 /** The WebView (with pull to refresh), its load progress and the photo-save pill. */
 @Composable
 private fun WebArea(webView: WebView, state: FeedState, actions: FeedActions) {
-    Box(Modifier.fillMaxSize().background(LocalPureFeedColors.current.ground)) {
+    Box(Modifier.fillMaxSize()) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { context ->
@@ -143,18 +146,32 @@ private fun WebArea(webView: WebView, state: FeedState, actions: FeedActions) {
             update = { it.isRefreshing = state.refreshing },
         )
 
-        if (state.progress in 1..99 && !state.refreshing) {
-            LinearProgressIndicator(
-                progress = { state.progress / 100f },
-                modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-
-        state.saveStatus?.let { status ->
-            SavePill(status, Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp))
-        }
+        LoadProgress(state, Modifier.fillMaxWidth().align(Alignment.TopCenter))
+        SaveStatusPill(state, Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp))
     }
+}
+
+/** Feed chips, shown only on the feed screens. Reads its own state. */
+@Composable
+private fun FeedChipsSlot(state: FeedState, onSelect: (String) -> Unit) {
+    if (state.onFeedScreen) FrameFeedChips(state.feedsChip, onSelect)
+}
+
+/** Load progress bar. Reads progress here so each % only recomposes this. */
+@Composable
+private fun LoadProgress(state: FeedState, modifier: Modifier) {
+    if (state.progress in 1..99 && !state.refreshing) {
+        LinearProgressIndicator(
+            progress = { state.progress / 100f },
+            modifier = modifier,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+@Composable
+private fun SaveStatusPill(state: FeedState, modifier: Modifier) {
+    state.saveStatus?.let { SavePill(it, modifier) }
 }
 
 /** Small translucent pill: filter icon + hidden count. Tap for the menu. */
