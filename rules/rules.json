@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-20",
+  "updated": "2026-10-20.2",
   "notes": "Detection data for assets/filter.js. See docs/selectors.md for how each signal was found. All strings are matched case-insensitively after icon glyphs are stripped. Bump \"updated\" on every change (e.g. 2026-10-17.2): the app ignores downloaded files older than its built-in copy.",
 
   "units": {
@@ -95,6 +95,13 @@
     "pathPattern": "^/photo",
     "timeoutMs": 30000
   },
+
+  "cssFixes": [
+    {
+      "why": "Photo viewer: a server-rendered photo (ServerImageArea) sometimes isn't swapped for the script version, and its image keeps top:248px; height:648px, so it lands below the screen (black or only the top showing). Match the working layout.",
+      "css": "[data-mcomponent=\"ServerImageArea\"] > img { top: 0 !important; height: 100% !important; }"
+    }
+  ],
 
   "userRules": {
     "keywords": { "label": "Keyword", "color": "#43A047" },

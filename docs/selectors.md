@@ -149,6 +149,16 @@ tap to `createObjectURL` while it fetches the full-size image, so filter.js repo
 the tap at once ("Saving photo…") and swallows repeat taps until the Blob appears
 (rules.json `photoSave`).
 
+### Photo viewer glitch (cssFixes)
+
+`/photo.php` albums are a horizontal scroller of photos. Facebook first sends
+server-rendered markup (`ServerImageArea`, under `.ssr`) and its scripts replace
+it with `ImageArea`. When that swap doesn't happen in time, the server version's
+`<img>` keeps `top: 248px; height: 648px` inside a 288 px box that already has
+`margin-top: 248px`, so the photo lands below the screen (black, or only its top
+showing). Working state: `top: 0; height: 100%`. Fixed by a `cssFixes` entry in
+rules.json, which filter.js injects as a stylesheet (2026-10-20).
+
 ## Recommended rule strategy (implemented in `rules.json`)
 
 1. **Find units**: `[data-type="vscroller"] > [data-tracking-duration-id]`.

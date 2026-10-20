@@ -175,6 +175,9 @@
       colors: {},       // rule id → colour, for debug outlines
       debug: !!settings.debug,
       customCss: settings.customCss || '',
+      // Layout corrections for Facebook's own glitches, from rules.json "cssFixes"
+      // (a list of {why, css}); fixable remotely like any other rule.
+      cssFixes: (rules.cssFixes || []).map(function (f) { return '/* ' + String(f.why || '').replace(/\*\//g, '') + ' */\n' + f.css; }).join('\n'),
       noAutoplay: !!settings.noAutoplay,
       videoBox: (rules.video && rules.video.containerSelector) || '[data-mcomponent="MVideo"]',
       feeds: rules.feeds || null,
@@ -256,6 +259,7 @@
       css.push(sel + '::before { background: ' + color + '; }');
     });
     styleElement('fbm-style').textContent = css.join('\n');
+    styleElement('fbm-fixes').textContent = compiled.cssFixes;
     styleElement('fbm-custom').textContent = compiled.customCss;
 
     if (compiled.debug) document.documentElement.setAttribute(ATTR_DEBUG, '');
