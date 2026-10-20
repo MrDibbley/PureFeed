@@ -181,6 +181,11 @@ break the photo viewer, menus and sheets, which size themselves to the viewport.
   Back + "Feeds") and the chips (`role="tab"`, `aria-selected`). The feed list has
   an inline `padding-top: 102px` to clear it, and Facebook's own pull-to-refresh
   spinner sits in that padding (first list child, `margin-top: -36px`).
+- **Performance (45-minute soak benchmarks, 2026-10-20, same day and build):** frame
+  off 1.28% janky frames; frame on 1.67–1.97% until each bar got its own
+  `graphicsLayer`, then 1.26% (p99 11 ms in both). Without the layers, every WebView
+  repaint made Android re-record the bars' drawing. Memory and CPU were unaffected
+  throughout. Script: `tools/soak/soak.py`.
 - **Known cosmetic issue:** below the end of short pages (Alerts, Menu) the WebView
   paints a light grey band. None of these change it: html/body/MScreen backgrounds,
   a transparent WebView over a themed container, or `color-scheme`. Fixed elements do
