@@ -1,0 +1,90 @@
+name: Filter problem
+description: An ad or suggestion got through, or a post was hidden that shouldn't have been.
+title: "[Filter] "
+labels: ["filter"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Filter fixes usually go out through `rules/rules.json`, which the app downloads on launch, so they don't need a new version.
+
+        **The most useful thing you can send:** turn on **debug mode** (filter menu → Debug mode). Hidden posts then show with a coloured outline and a label instead of disappearing. A screenshot of the problem post in debug mode shows whether it was caught, and by which rule.
+
+        **Issues are public.** Blur or crop names, faces and post text in screenshots. The **header** of the post (the line with "Sponsored", "Follow", "Join", the time and so on) is the part that matters most.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What went wrong?
+      options:
+        - Something got through that should be hidden
+        - A post was hidden that shouldn't be
+        - Something else (describe below)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: rule
+    attributes:
+      label: Which kind of post?
+      options:
+        - Sponsored / ad (including "Paid for by")
+        - Suggested post (Follow button)
+        - Group suggestion (Join button)
+        - Reels
+        - People you may know
+        - Stories
+        - Memories
+        - "\"Open app\" prompt"
+        - Keyword filter
+        - Muted page or person
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: What did the post look like?
+      description: The words in its header (for example "Sponsored · Paid for by …", "• Follow", "Join"), the kind of post, and where it appeared (Feeds, the normal feed, a group…). Don't paste other people's posts.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: PureFeed version
+      description: Bottom of the filter menu.
+      placeholder: "1.0.4"
+    validations:
+      required: true
+
+  - type: input
+    id: rules
+    attributes:
+      label: Rules version
+      description: Filter settings → Rule updates ("Using … rules, updated …").
+      placeholder: "2026-10-20.4"
+
+  - type: input
+    id: language
+    attributes:
+      label: Facebook language
+      description: Filters only match English Facebook text for now.
+      placeholder: "English (UK)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Debug-mode screenshot (optional)
+      description: Drag images here. **Blur or crop names, faces and post text first.**
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: I've removed other people's names, faces and posts from anything attached, and I haven't attached a DOM dump (those contain private posts; ask in the issue if one is needed).
+          required: true

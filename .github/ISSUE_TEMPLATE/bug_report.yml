@@ -1,0 +1,92 @@
+name: Bug report
+description: PureFeed crashes, freezes, or something in the app doesn't work.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem.
+
+        **Issues are public.** Facebook screenshots show other people's names, faces and posts, so **crop or blur them** before attaching anything.
+        If a post got through the filter or was hidden by mistake, use the **Filter problem** form instead.
+
+  - type: input
+    id: version
+    attributes:
+      label: PureFeed version
+      description: Shown at the bottom of the filter menu (the "N hidden" chip in the top bar, or the round filter button).
+      placeholder: "1.0.4"
+    validations:
+      required: true
+
+  - type: input
+    id: phone
+    attributes:
+      label: Phone and Android version
+      placeholder: "Samsung Galaxy S25 Ultra, Android 17"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: navigation
+    attributes:
+      label: Layout
+      description: Filter settings → "Use PureFeed navigation".
+      options:
+        - PureFeed navigation (on)
+        - Facebook's layout (off)
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you do?
+      description: Step by step, so it can be repeated.
+      placeholder: |
+        1. Opened a photo from a post
+        2. Tapped ⋯ → Save
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often?
+      options:
+        - Every time
+        - Sometimes
+        - Once
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots (optional)
+      description: Drag images here. **Blur or crop names, faces and post content first.**
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: I've removed other people's names, faces and posts from anything attached, and I haven't attached a DOM dump (those contain private posts; ask in the issue if one is needed).
+          required: true

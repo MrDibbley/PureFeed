@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest something PureFeed could do.
+title: "[Idea] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like PureFeed to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why would it help?
+      description: The problem it solves, or when you'd use it.
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else? (optional)
+      description: Screenshots or examples. Blur other people's names, faces and posts.

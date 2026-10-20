@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: How PureFeed works and how to fix filters
+    url: https://github.com/MrDibbley/PureFeed#readme
+    about: Features, installing, verifying downloads, and the "Fixing a broken filter" steps.
+  - name: Latest release
+    url: https://github.com/MrDibbley/PureFeed/releases/latest
+    about: Check you're on the newest version first. The app can update itself (filter menu → Check for updates).
