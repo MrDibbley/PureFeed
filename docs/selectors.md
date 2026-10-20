@@ -159,6 +159,17 @@ it with `ImageArea`. When that swap doesn't happen in time, the server version's
 showing). Working state: `top: 0; height: 100%`. Fixed by a `cssFixes` entry in
 rules.json, which filter.js injects as a stylesheet (2026-10-20).
 
+### Infinite scroll (why we can't preload earlier)
+
+The feed list ends with a loader child carrying `data-on-first-visibility-action-id`
+(about 214 px tall). Facebook requests the next batch when you're about 1.5 screens
+from it, and a batch takes about 3 s. Tested 2026-10-20, none of these trigger an
+earlier load: shifting the loader up with `position: relative; top: -Npx`, the same
+plus scroll events, and a synchronous scroll "peek". Facebook creates **no
+IntersectionObserver**; it tracks visibility from its own layout model
+(`data-actual-height`) on its own schedule. Faking `innerHeight` would work but would
+break the photo viewer, menus and sheets, which size themselves to the viewport.
+
 ## Recommended rule strategy (implemented in `rules.json`)
 
 1. **Find units**: `[data-type="vscroller"] > [data-tracking-duration-id]`.
