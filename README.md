@@ -12,6 +12,12 @@ to see. Sideload only; not on the Play Store.
 
 ## What it does
 
+- **Its own look:** PureFeed's own top bar, feed chips (Latest, Friends, Groups,
+  Pages, Favourites) and bottom bar (Feed, Friends, Messages, Alerts, Menu) with
+  unread badges replace Facebook's header and tabs, in an original slate and
+  sea-green theme that follows light and dark mode. The posts themselves are still
+  Facebook's web page, so likes, comments, photos and video work as normal.
+  "Use PureFeed navigation" in Filter settings switches back to Facebook's layout.
 - **Hides:** sponsored posts (including "Paid for by" political ads), suggested
   posts from pages you don't follow, group suggestions, Reels, People You May Know,
   the Stories tray and the "Open app" nag bar. Memories hiding is also available but
@@ -21,11 +27,16 @@ to see. Sideload only; not on the Play Store.
 - **Start on Feeds:** opens Facebook's chronological "Feeds" view (newest first)
   instead of the ranked feed, optionally filtered to Friends, Favourites, Groups or
   Pages. Back takes you to the normal feed.
-- **No video autoplay:** videos only play when you tap them.
+- **No video autoplay:** videos only play when you tap them, and keep their
+  thumbnail until then.
+- **Save photos:** Save in a photo's ⋯ menu stores it in **Pictures/PureFeed**.
 - **Debug mode:** outlines matched posts in a colour per rule instead of hiding them.
 - **Remote rules:** detection rules are downloaded from this repo
   ([`rules/rules.json`](rules/rules.json)) on launch, so broken filters can be fixed
   without a new APK.
+- **In-app updates:** checks this repo's releases once a day (or **Check for
+  updates** in the filter menu) and installs new versions after checking their
+  SHA-256 and signing certificate. Android asks once for permission to install.
 - Persistent login, photo upload, pull to refresh, full-screen video, dark mode
   following the system, and external links opened in your browser.
 
@@ -131,7 +142,8 @@ unsigned APK instead.
 
 ## Fixing a broken filter
 
-1. Turn on debug mode (filter button, bottom right): matched posts get a coloured
+1. Turn on debug mode (the "N hidden" chip in the top bar opens the filter menu; in
+   Facebook's layout it's the round filter button, bottom right): matched posts get a coloured
    outline and a label instead of disappearing.
 2. If something isn't caught, plug the phone in and open `chrome://inspect` in
    desktop Chrome (debug builds only), or use **Dump DOM** and share the file.
