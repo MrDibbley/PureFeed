@@ -101,6 +101,11 @@ fun SettingsScreen(
         LazyColumn(Modifier.fillMaxSize().padding(padding).imePadding()) {
             item { SectionHeader(R.string.section_feed) }
             item {
+                RuleSwitch(R.string.native_frame, R.string.native_frame_desc, settings.nativeFrame) { on ->
+                    onChange { it.copy(nativeFrame = on) }
+                }
+            }
+            item {
                 RuleSwitch(R.string.start_on_feeds, R.string.start_on_feeds_desc, settings.startOnFeeds) { on ->
                     onChange { it.copy(startOnFeeds = on) }
                 }

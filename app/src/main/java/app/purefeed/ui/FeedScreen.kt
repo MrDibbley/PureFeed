@@ -3,6 +3,7 @@ package app.purefeed.ui
 import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import app.purefeed.R
+import app.purefeed.ui.theme.LocalPureFeedColors
 import app.purefeed.web.SaveStatus
 
 /** UI state driven by WebView callbacks. */
@@ -59,6 +61,16 @@ class FeedState {
     var blockedRequests by mutableIntStateOf(0)
     /** "Saving photo…" / "Saved to …" pill, or null. */
     var saveStatus by mutableStateOf<SaveStatus?>(null)
+
+    // ---- Native frame, from filter.js (__fbm reports via onNav) ----
+    /** Which bottom-bar destination Facebook is showing (NavTarget.key), or null. */
+    var navActive by mutableStateOf<String?>(null)
+    /** Unread counts per destination, read from Facebook's tab labels. */
+    var navBadges by mutableStateOf(emptyMap<String, Int>())
+    /** True on the home/Feeds screens, where the feed chips apply. */
+    var onFeedScreen by mutableStateOf(true)
+    /** Selected Feeds chip key, or null when Facebook isn't on Feeds. */
+    var feedsChip by mutableStateOf<String?>(null)
 }
 
 /** Actions offered by the filter button's menu. */
@@ -69,19 +81,52 @@ class FeedActions(
     val onToggleDebug: () -> Unit,
     val onDumpDom: () -> Unit,
     val onCheckUpdates: () -> Unit,
+    /** Native frame: go to a bottom-bar destination or "search". */
+    val onNavigate: (String) -> Unit = {},
+    /** Native frame: pick a Feeds chip (all, friends, groups, pages, favourites). */
+    val onFeedsChip: (String) -> Unit = {},
 )
 
 @Composable
-fun FeedScreen(webView: WebView, state: FeedState, debug: Boolean, version: String, actions: FeedActions) {
+fun FeedScreen(webView: WebView, state: FeedState, debug: Boolean, version: String, frame: Boolean, actions: FeedActions) {
     // Always on: WebView.canGoBack() is checked at press time, because during Facebook's
     // in-page navigations it reports stale values when doUpdateVisitedHistory fires.
     BackHandler(onBack = actions.onBack)
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-    ) {
+    if (!frame) {
+        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+            WebArea(webView, state, actions)
+            FilterButton(
+                state = state,
+                debug = debug,
+                version = version,
+                actions = actions,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
+            )
+        }
+        return
+    }
+
+    var menuOpen by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+        FrameTopBar(
+            hidden = state.hiddenCounts.values.sum(),
+            onFilter = { menuOpen = true },
+            onSearch = { actions.onNavigate("search") },
+            filterMenu = { FilterMenu(menuOpen, { menuOpen = false }, state, debug, version, actions) },
+        )
+        if (state.onFeedScreen) FrameFeedChips(state.feedsChip, actions.onFeedsChip)
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            WebArea(webView, state, actions)
+        }
+        FrameBottomBar(state.navActive, state.navBadges) { actions.onNavigate(it.key) }
+    }
+}
+
+/** The WebView (with pull to refresh), its load progress and the photo-save pill. */
+@Composable
+private fun WebArea(webView: WebView, state: FeedState, actions: FeedActions) {
+    Box(Modifier.fillMaxSize().background(LocalPureFeedColors.current.ground)) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { context ->
@@ -107,16 +152,8 @@ fun FeedScreen(webView: WebView, state: FeedState, debug: Boolean, version: Stri
         }
 
         state.saveStatus?.let { status ->
-            SavePill(status, Modifier.align(Alignment.BottomCenter).padding(bottom = 64.dp))
+            SavePill(status, Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp))
         }
-
-        FilterButton(
-            state = state,
-            debug = debug,
-            version = version,
-            actions = actions,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
-        )
     }
 }
 
@@ -143,30 +180,46 @@ private fun FilterButton(state: FeedState, debug: Boolean, version: String, acti
                 }
             }
         }
-        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+        FilterMenu(menuOpen, { menuOpen = false }, state, debug, version, actions)
+    }
+}
+
+/** The filter menu: hidden counts, settings, debug tools, updates and the version. */
+@Composable
+private fun FilterMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    state: FeedState,
+    debug: Boolean,
+    version: String,
+    actions: FeedActions,
+) {
+    val close = onDismiss
+    run {
+        DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
             CountsSummary(state)
             HorizontalDivider()
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.menu_settings)) },
-                onClick = { menuOpen = false; actions.onOpenSettings() },
+                onClick = { close(); actions.onOpenSettings() },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.menu_debug)) },
                 trailingIcon = { Checkbox(checked = debug, onCheckedChange = null) },
-                onClick = { menuOpen = false; actions.onToggleDebug() },
+                onClick = { close(); actions.onToggleDebug() },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.menu_dump)) },
-                onClick = { menuOpen = false; actions.onDumpDom() },
+                onClick = { close(); actions.onDumpDom() },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.menu_reload)) },
-                onClick = { menuOpen = false; actions.onRefresh() },
+                onClick = { close(); actions.onRefresh() },
             )
             HorizontalDivider()
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.menu_check_updates)) },
-                onClick = { menuOpen = false; actions.onCheckUpdates() },
+                onClick = { close(); actions.onCheckUpdates() },
             )
             Text(
                 stringResource(R.string.menu_version, version),

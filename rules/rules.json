@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-20.3",
+  "updated": "2026-10-20.4",
   "notes": "Detection data for assets/filter.js. See docs/selectors.md for how each signal was found. All strings are matched case-insensitively after icon glyphs are stripped. Bump \"updated\" on every change (e.g. 2026-10-17.2): the app ignores downloaded files older than its built-in copy.",
 
   "units": {
@@ -102,6 +102,16 @@
       "css": "[data-mcomponent=\"ServerImageArea\"] > img { position: static !important; top: auto !important; width: 100% !important; height: 100% !important; }"
     }
   ],
+
+  "nav": {
+    "notes": "PureFeed's own navigation. Home-screen tabs are role=tab with labels like 'messages, 3 new, 3 of 6'.",
+    "tabSelector": "[role=\"tab\"][aria-label]",
+    "tabPattern": "^([a-z ]+?)(?:, (\\d+) new)?, \\d+ of \\d+$",
+    "tabNames": { "feed": "feed", "friends": "friends", "messages": "messages", "notifications": "notifications" },
+    "homeChrome": ["[aria-label=\"Facebook logo\"]", "[role=\"tablist\"]"],
+    "searchSelector": "[aria-label=\"Search Facebook\"]",
+    "paths": { "feed": "/", "friends": "/friends/", "messages": "/messages/", "notifications": "/notifications/", "menu": "/bookmarks/", "search": "/search/" }
+  },
 
   "userRules": {
     "keywords": { "label": "Keyword", "color": "#43A047" },

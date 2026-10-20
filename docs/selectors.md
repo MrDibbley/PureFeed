@@ -170,6 +170,22 @@ IntersectionObserver**; it tracks visibility from its own layout model
 (`data-actual-height`) on its own schedule. Faking `innerHeight` would work but would
 break the photo viewer, menus and sheets, which size themselves to the viewport.
 
+### Native frame (PureFeed navigation)
+
+- **Home screen:** Facebook's top bar (`[aria-label="Facebook logo"]`, "Search Facebook",
+  "Facebook menu") and tab bar (`[role="tablist"]`) are the 3rd and 4th children of the
+  feed list. Tabs are `role="tab"` with labels like `messages, 3 new, 3 of 6` and
+  `aria-selected`. Unread counts exist **only** in these labels, so they're read
+  while the home screen shows (each start and refresh) and kept afterwards.
+- **Feeds screen:** a fixed 102 px header holds the nav bar (`nav_bar_component`,
+  Back + "Feeds") and the chips (`role="tab"`, `aria-selected`). The feed list has
+  an inline `padding-top: 102px` to clear it, and Facebook's own pull-to-refresh
+  spinner sits in that padding (first list child, `margin-top: -36px`).
+- **Known cosmetic issue:** below the end of short pages (Alerts, Menu) the WebView
+  paints a light grey band. None of these change it: html/body/MScreen backgrounds,
+  a transparent WebView over a themed container, or `color-scheme`. Fixed elements do
+  paint there. Not yet explained (2026-10-20).
+
 ## Recommended rule strategy (implemented in `rules.json`)
 
 1. **Find units**: `[data-type="vscroller"] > [data-tracking-duration-id]`.

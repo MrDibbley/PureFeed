@@ -1,5 +1,17 @@
 <resources>
     <string name="app_name">PureFeed</string>
+    <string name="app_name_brand">PureFeed</string>
+    <string name="frame_hidden">%1$d hidden</string>
+    <string name="frame_search">Search</string>
+    <string name="nav_feed">Feed</string>
+    <string name="nav_friends">Friends</string>
+    <string name="nav_messages">Messages</string>
+    <string name="nav_alerts">Alerts</string>
+    <string name="nav_menu">Menu</string>
+    <string name="nav_with_badge">%1$s, %2$d new</string>
+    <string name="chip_latest">Latest</string>
+    <string name="native_frame">Use PureFeed navigation</string>
+    <string name="native_frame_desc">PureFeed\'s own top bar, feed chips and bottom bar instead of Facebook\'s</string>
     <string name="no_browser">No browser installed to open this link</string>
 
     <string name="menu_settings">Filter settings</string>

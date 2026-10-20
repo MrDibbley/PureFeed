@@ -59,6 +59,16 @@ class FilterInjector(private val webView: WebView, private val filterJs: String)
 
     private fun script(config: String) = "$filterJs\n;window.__fbm && window.__fbm.configure($config);"
 
+    /** Native frame: go to a destination (rules.json "nav" key, e.g. "friends", or "search"). */
+    fun navigate(target: String) {
+        webView.evaluateJavascript("window.__fbm && window.__fbm.navigate(${json.encodeToString(target)});", null)
+    }
+
+    /** Native frame: show Feeds with a chip selected ("all", "friends", …). */
+    fun feedsChip(key: String) {
+        webView.evaluateJavascript("window.__fbm && window.__fbm.feedsChip(${json.encodeToString(key)});", null)
+    }
+
     fun dumpDom(requestId: String) {
         webView.evaluateJavascript("window.__fbm && window.__fbm.dumpDom(${json.encodeToString(requestId)});", null)
     }

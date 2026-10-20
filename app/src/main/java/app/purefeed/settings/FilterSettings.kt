@@ -19,6 +19,8 @@ data class FilterSettings(
     val startOnFeeds: Boolean = true,
     /** Feeds filter chip: a key of rules.json "feeds.filterChips" (all, favourites, friends, groups, pages). */
     val feedsFilter: String = "all",
+    /** PureFeed's native top bar, chips and bottom bar; filter.js hides Facebook's own. */
+    val nativeFrame: Boolean = true,
     /** Refuse video play() unless the user just tapped (filter.js installAutoplayBlock). */
     val noAutoplay: Boolean = true,
 ) {

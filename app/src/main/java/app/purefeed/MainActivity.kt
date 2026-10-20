@@ -98,6 +98,9 @@ class MainActivity : ComponentActivity(), FeedEvents {
 
         chromeClient = PureFeedChromeClient(this, this)
         webView = FeedWebView.create(this).apply {
+            // Transparent, so any area the page doesn't paint (below a short page such as
+            // Alerts) shows the themed container behind it (FeedScreen) instead of grey.
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
             webViewClient = PureFeedWebViewClient(this@MainActivity, blocker)
             webChromeClient = chromeClient
             // "Save" on a photo (and any other download the page starts).
@@ -110,6 +113,14 @@ class MainActivity : ComponentActivity(), FeedEvents {
                     onDomChunk = { id, index, total, chunk -> dumper.onChunk(id, index, total, chunk, ::shareDump) },
                     onFeedsOpened = { autoFeedsIndex = webView.copyBackForwardList().currentIndex },
                     onSaveStarted = downloads::saveStarted,
+                    onNav = { nav ->
+                        feedState.navActive = nav.active
+                        // Facebook counts new posts on its feed tab ("780 new"); not useful on our Feed button.
+                        // Counts are only readable on Facebook's home screen; elsewhere keep the last ones.
+                        if (nav.badges.isNotEmpty()) feedState.navBadges = nav.badges - "feed"
+                        feedState.onFeedScreen = nav.onFeedScreen
+                        feedState.feedsChip = nav.feedsChip
+                    },
                 ),
                 FilterBridge.NAME,
             )
@@ -192,7 +203,7 @@ class MainActivity : ComponentActivity(), FeedEvents {
                         )
                     } else {
                         FeedScreen(
-                            webView, feedState, settings.debug, updates.installedVersion,
+                            webView, feedState, settings.debug, updates.installedVersion, settings.nativeFrame,
                             FeedActions(
                                 onBack = ::goBack,
                                 onRefresh = {
@@ -203,6 +214,8 @@ class MainActivity : ComponentActivity(), FeedEvents {
                                 onToggleDebug = { updateSettings { it.copy(debug = !it.debug) } },
                                 onDumpDom = { injector.dumpDom(dumper.begin()) },
                                 onCheckUpdates = updates::checkNow,
+                                onNavigate = injector::navigate,
+                                onFeedsChip = injector::feedsChip,
                             ),
                         )
                     }

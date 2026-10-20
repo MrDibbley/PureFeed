@@ -20,7 +20,11 @@ class FilterBridge(
     private val onDomChunk: (requestId: String, index: Int, total: Int, chunk: String) -> Unit,
     private val onFeedsOpened: () -> Unit,
     private val onSaveStarted: () -> Unit,
+    private val onNav: (NavReport) -> Unit,
 ) {
+
+    /** Where Facebook is and its unread counts, for the native frame. */
+    data class NavReport(val active: String?, val badges: Map<String, Int>, val onFeedScreen: Boolean, val feedsChip: String?)
     private val main = Handler(Looper.getMainLooper())
 
     @JavascriptInterface
@@ -46,6 +50,22 @@ class FilterBridge(
     @JavascriptInterface
     fun onSaveStarted() {
         main.post { onSaveStarted.invoke() }
+    }
+
+    /** filter.js: {"active": "feed"|…|null, "badges": {"messages": 3}, "feedScreen": true, "chip": "all"|null} */
+    @JavascriptInterface
+    fun onNav(json: String) {
+        val report = runCatching {
+            val o = Json.parseToJsonElement(json).jsonObject
+            fun str(k: String) = o[k]?.jsonPrimitive?.takeIf { it.isString }?.content
+            NavReport(
+                active = str("active"),
+                badges = o["badges"]?.jsonObject?.mapValues { it.value.jsonPrimitive.int }.orEmpty(),
+                onFeedScreen = o["feedScreen"]?.jsonPrimitive?.content == "true",
+                feedsChip = str("chip"),
+            )
+        }.getOrNull() ?: return
+        main.post { onNav(report) }
     }
 
     companion object {

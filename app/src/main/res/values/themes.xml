@@ -1,5 +1,5 @@
 <resources>
     <style name="Theme.PureFeed" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowBackground">#F2F5F4</item>
     </style>
 </resources>

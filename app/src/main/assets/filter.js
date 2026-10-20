@@ -55,6 +55,9 @@
   var ATTR_LABEL = 'data-fbm-label';   // human label shown in debug mode
   var ATTR_DEBUG = 'data-fbm-debug';   // set on <html> while debug mode is on
   var ATTR_SWITCHING = 'data-fbm-switching'; // set on <html> while openFeeds() runs
+  var ATTR_FRAME = 'data-fbm-frame';     // set on <html> while the native frame is on
+  var ATTR_CHROME = 'data-fbm-chrome';   // Facebook navigation the native frame replaces
+  var ATTR_UNPAD = 'data-fbm-unpad';     // container padded for a header the frame hides
   var BRIDGE = 'PureFeedBridge';      // name of the @JavascriptInterface (FilterBridge.kt)
 
   var configJson = null;   // last configure() argument, to skip identical re-configures
@@ -183,6 +186,8 @@
       feeds: rules.feeds || null,
       photoSave: rules.photoSave || { buttonSelector: '[aria-label="Save"]', pathPattern: '^/photo', timeoutMs: 30000 },
       startOnFeeds: !!settings.startOnFeeds,
+      nativeFrame: !!settings.nativeFrame,
+      nav: rules.nav || null,
       feedsFilter: settings.feedsFilter || 'all'
     };
 
@@ -244,6 +249,13 @@
         ' content: attr(' + ATTR_LABEL + '); position: absolute; top: 0; right: 0; z-index: 2147483647;' +
         ' background: #888; color: #fff; font: 600 11px/18px sans-serif; padding: 0 6px;' +
         ' border-bottom-left-radius: 6px; pointer-events: none; }',
+      // Native frame: Facebook's own header, tab bar and Feeds header are replaced.
+      'html[' + ATTR_FRAME + '] [' + ATTR_CHROME + '] { display: none !important; }',
+      'html[' + ATTR_FRAME + '] [' + ATTR_UNPAD + '] { padding-top: 0 !important; }',
+      // Short pages (alerts, menu) leave the canvas showing below them; paint it in
+      // PureFeed's ground colour (ui/theme/Theme.kt) instead of the browser's grey.
+      'html[' + ATTR_FRAME + '] { background: #F2F5F4 !important; }',
+      '@media (prefers-color-scheme: dark) { html[' + ATTR_FRAME + '] { background: #0E1416 !important; } }',
       // While openFeeds() switches screens, cover the page with an "Opening Feeds…"
       // message (rather than a blank screen) so the ranked feed and the menu don't
       // flash past. pointer-events: none, so it can never trap the user.
@@ -262,6 +274,8 @@
     styleElement('fbm-fixes').textContent = compiled.cssFixes;
     styleElement('fbm-custom').textContent = compiled.customCss;
 
+    if (compiled.nativeFrame) document.documentElement.setAttribute(ATTR_FRAME, '');
+    else document.documentElement.removeAttribute(ATTR_FRAME);
     if (compiled.debug) document.documentElement.setAttribute(ATTR_DEBUG, '');
     else document.documentElement.removeAttribute(ATTR_DEBUG);
   }
@@ -403,6 +417,8 @@
    * getComputedStyle, so it runs debounced rather than on every mutation.
    */
   function scanFixed() {
+    markChrome();
+    reportNav();
     if (!compiled.fixedRules.length) return;
     var textEls = document.querySelectorAll(compiled.textSelector);
     compiled.fixedRules.forEach(function (rule) {
@@ -421,9 +437,18 @@
     scheduleCounts();
   }
 
+  /**
+   * Runs scanFixed (fixed-element rules, native-frame chrome and nav report) at most
+   * every 250 ms. A throttle, not a debounce: while Facebook renders, mutations never
+   * stop, and a debounce kept postponing the scan until the home screen's tab bar (the
+   * only place unread counts appear) had already been replaced by Feeds.
+   */
   function scheduleFixedScan() {
-    clearTimeout(fixedScanTimer);
-    fixedScanTimer = setTimeout(scanFixed, 250);
+    if (fixedScanTimer) return;
+    fixedScanTimer = setTimeout(function () {
+      fixedScanTimer = 0;
+      scanFixed();
+    }, 250);
   }
 
   // -------------------------------------------------------------------------
@@ -685,18 +710,39 @@
     feedsAttempted = true;
     if (!compiled.startOnFeeds || !f) return;
     if (location.pathname !== '/' && location.pathname !== '/home.php') return;
+    switchToFeeds(compiled.feedsFilter);
+  }
 
+  /** True when Facebook is showing the Feeds screen (its nav bar title says so). */
+  function onFeedsScreen() {
+    var f = compiled && compiled.feeds;
+    if (!f) return false;
+    var el = document.querySelector(f.titleSelector);
+    return !!el && f.titleText.map(function (t) { return t.toLowerCase(); }).indexOf(clean(el.textContent)) >= 0;
+  }
+
+  // Facebook's click handlers sit on the nearest ancestor with data-action-id.
+  function tapFb(el) {
+    var target = el;
+    for (var d = 0; d < 8 && target && !target.hasAttribute('data-action-id'); d++) target = target.parentElement;
+    (target && target.hasAttribute('data-action-id') ? target : el).click();
+  }
+
+  /**
+   * Opens Feeds from the logged-in home screen (☰ → Feeds) and picks the chip
+   * [filterKey] (a rules.json feeds.filterChips key). Used by Start on Feeds and by
+   * the native frame's Feed button and chips. If already on Feeds, only the chip.
+   */
+  function switchToFeeds(filterKey) {
+    var f = compiled.feeds;
+    if (!f) return;
     var root = document.documentElement;
     var deadline = Date.now() + (f.timeoutMs || 10000);   // phase 1; reset for phase 2
     var wanted = function (list) { return list.map(function (t) { return t.toLowerCase(); }); };
     var menuTexts = wanted(f.menuItemText);
     var titleTexts = wanted(f.titleText);
 
-    function title() {
-      var el = document.querySelector(f.titleSelector);
-      return el ? clean(el.textContent) : '';
-    }
-    function onFeeds() { return titleTexts.indexOf(title()) >= 0; }
+    var onFeeds = onFeedsScreen;
 
     // TextArea with the given (cleaned) text, outside the nav bar title.
     function findText(texts) {
@@ -707,12 +753,7 @@
       return null;
     }
 
-    // Facebook's click handlers sit on the nearest ancestor with data-action-id.
-    function tap(el) {
-      var target = el;
-      for (var d = 0; d < 8 && target && !target.hasAttribute('data-action-id'); d++) target = target.parentElement;
-      (target && target.hasAttribute('data-action-id') ? target : el).click();
-    }
+    var tap = tapFb;
 
     // Polls until find() returns something, then calls next(it). Gives up at the deadline.
     function waitFor(find, next) {
@@ -724,6 +765,7 @@
 
     function done() { root.removeAttribute(ATTR_SWITCHING); }
 
+    var onFeedsAlready = onFeeds();
     // Phase 1: wait for the logged-in home screen, without covering anything.
     waitFor(function () {
       if (onFeeds()) return 'already';
@@ -747,13 +789,157 @@
     });
 
     function chooseFilter() {
-      var label = f.filterChips && f.filterChips[compiled.feedsFilter];
-      if (!label || compiled.feedsFilter === 'all') return done();
+      var label = f.filterChips && f.filterChips[filterKey];
+      // "All" is what Feeds opens on; tap it only when switching back from another chip.
+      if (!label || (filterKey === 'all' && !onFeedsAlready)) return done();
       waitFor(function () { return findText([label.toLowerCase()]); }, function (chip) {
         tap(chip);
         setTimeout(done, 600);
       });
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Native frame (PureFeed's own top bar, chips and bottom bar)
+  // -------------------------------------------------------------------------
+
+  /**
+   * When settings.nativeFrame is on, the app draws its own navigation and this:
+   *  - hides Facebook's own chrome (marked data-fbm-chrome, hidden by applyStyles):
+   *    on the home screen the feed-list children holding nav.homeChrome (logo/search
+   *    bar, tab bar); on Feeds the fixed header around the "Feeds" title and chips.
+   *  - reports where Facebook is (active tab, unread counts from the tab labels, the
+   *    selected Feeds chip) to Kotlin via PureFeedBridge.onNav, when it changes.
+   *  - acts on the native buttons: navigate(target) and feedsChip(key).
+   * Selectors and addresses: rules.json "nav" (and "feeds" for the chips).
+   */
+  var lastNavJson = '';
+  var knownBadges = {};
+
+  function navTabs(nav) {
+    var re = new RegExp(nav.tabPattern, 'i');
+    var out = [];
+    document.querySelectorAll(nav.tabSelector).forEach(function (t) {
+      var m = re.exec(t.getAttribute('aria-label') || '');
+      if (m) out.push({ el: t, name: m[1].toLowerCase(), badge: m[2] ? parseInt(m[2], 10) : 0, selected: t.getAttribute('aria-selected') === 'true' });
+    });
+    return out;
+  }
+
+  /** The direct child of a feed list that contains el (any child, post or not). */
+  function listChildOf(el) {
+    while (el && el.parentElement && !el.parentElement.matches(compiled.parentSelector)) el = el.parentElement;
+    return el && el.parentElement ? el : null;
+  }
+
+  function fixedAncestor(el) {
+    for (var d = 0; el && el !== document.body && d < 12; d++, el = el.parentElement) {
+      if (getComputedStyle(el).position === 'fixed') return el;
+    }
+    return null;
+  }
+
+  function markChrome() {
+    var nav = compiled.nav;
+    if (!compiled.nativeFrame || !nav) {
+      document.querySelectorAll('[' + ATTR_CHROME + ']').forEach(function (e) { e.removeAttribute(ATTR_CHROME); });
+      return;
+    }
+    (nav.homeChrome || []).forEach(function (sel) {
+      document.querySelectorAll(sel).forEach(function (e) {
+        var child = listChildOf(e);
+        if (child && !child.hasAttribute(ATTR_CHROME)) child.setAttribute(ATTR_CHROME, '');
+      });
+    });
+    if (onFeedsScreen()) {
+      var header = fixedAncestor(document.querySelector(compiled.feeds.titleSelector));
+      if (header && !header.hasAttribute(ATTR_CHROME)) header.setAttribute(ATTR_CHROME, '');
+      // The feed list is padded down to clear that header, and Facebook's own
+      // pull-to-refresh spinner sits in the padding: drop both, or they show as a gap.
+      var list = document.querySelector(compiled.parentSelector);
+      if (list && !list.hasAttribute(ATTR_UNPAD)) list.setAttribute(ATTR_UNPAD, '');
+      var first = list && list.firstElementChild;
+      if (first && !first.matches(compiled.unitSelector) && !first.hasAttribute(ATTR_CHROME)) first.setAttribute(ATTR_CHROME, '');
+    }
+  }
+
+  function readNav() {
+    var nav = compiled.nav;
+    var tabs = navTabs(nav);
+    var badges = {};
+    if (tabs.length) {
+      tabs.forEach(function (t) { var key = nav.tabNames[t.name]; if (key) badges[key] = t.badge; });
+      knownBadges = badges;   // tabs only exist on the home screen; keep the counts elsewhere
+    } else {
+      badges = knownBadges;
+    }
+    var path = location.pathname;
+    var feeds = onFeedsScreen();
+    var active = null;
+    if (feeds) {
+      active = 'feed';
+    } else if (tabs.length) {
+      var sel = tabs.filter(function (t) { return t.selected; })[0];
+      active = sel ? (nav.tabNames[sel.name] || null) : null;
+    } else {
+      Object.keys(nav.paths || {}).forEach(function (key) {
+        var p = nav.paths[key];
+        if (p !== '/' && path.indexOf(p) === 0) active = key;
+      });
+    }
+    var chip = null;
+    if (feeds) {
+      var chips = compiled.feeds.filterChips || {};
+      document.querySelectorAll('[role="tab"][aria-selected="true"]').forEach(function (t) {
+        var label = clean(t.textContent);
+        Object.keys(chips).forEach(function (k) { if (chips[k].toLowerCase() === label) chip = k; });
+      });
+      if (!chip) chip = 'all';
+    }
+    return { active: active, badges: badges, feedScreen: path === '/' || path === '/home.php', chip: chip };
+  }
+
+  function reportNav() {
+    if (!compiled.nav || !compiled.nativeFrame) return;
+    var json = JSON.stringify(readNav());
+    if (json === lastNavJson) return;
+    lastNavJson = json;
+    var bridge = window[BRIDGE];
+    if (bridge && bridge.onNav) bridge.onNav(json);
+  }
+
+  /** Native bottom bar / search: go to a destination (a nav.tabNames value, "menu" or "search"). */
+  function navigate(target) {
+    var nav = compiled.nav;
+    if (!nav) return;
+    if (target === 'feed') {
+      if (onFeedsScreen()) return window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (document.querySelector(compiled.feeds.menuButtonSelector)) return switchToFeeds(compiled.feedsFilter);
+      return location.assign('/');
+    }
+    if (target === 'menu' || target === 'search') {
+      var btn = document.querySelector(target === 'menu' ? compiled.feeds.menuButtonSelector : nav.searchSelector);
+      if (btn) return tapFb(btn);
+      return location.assign(nav.paths[target]);
+    }
+    var tab = navTabs(nav).filter(function (t) { return nav.tabNames[t.name] === target; })[0];
+    if (tab) return tapFb(tab.el);
+    if (nav.paths[target]) location.assign(nav.paths[target]);
+  }
+
+  /** Native chips: Feeds with chip [key] ("all", "friends", …). */
+  function feedsChip(key) {
+    var label = compiled.feeds && compiled.feeds.filterChips && compiled.feeds.filterChips[key];
+    if (!label) return;
+    if (onFeedsScreen()) {
+      var tabs = document.querySelectorAll('[role="tab"]');
+      for (var i = 0; i < tabs.length; i++) {
+        if (clean(tabs[i].textContent) === label.toLowerCase()) return tapFb(tabs[i]);
+      }
+      return;
+    }
+    if (document.querySelector(compiled.feeds.menuButtonSelector)) return switchToFeeds(key);
+    location.assign('/');
   }
 
   // -------------------------------------------------------------------------
@@ -821,6 +1007,12 @@
     },
 
     dumpDom: dumpDom,
+
+    /** Native frame buttons (FilterInjector.navigate / feedsChip). */
+    navigate: navigate,
+    feedsChip: feedsChip,
+    /** For chrome://inspect: what the native frame was last told. */
+    navState: function () { return lastNavJson ? JSON.parse(lastNavJson) : null; },
 
     /** For DownloadHandler.kt: the Blob behind a download's blob: URL, as a data: URL. */
     readBlob: readBlob,
