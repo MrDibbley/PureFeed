@@ -98,9 +98,12 @@ class MainActivity : ComponentActivity(), FeedEvents {
 
         chromeClient = PureFeedChromeClient(this, this)
         webView = FeedWebView.create(this).apply {
-            // Transparent, so any area the page doesn't paint (below a short page such as
-            // Alerts) shows the themed container behind it (FeedScreen) instead of grey.
-            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            // Opaque, in PureFeed's ground colour. (A transparent WebView over a themed
+            // container was tried for the grey band below short pages; it didn't fix that and
+            // costs blending on every frame: janky frames 1.0% → 1.8% in the soak benchmark.)
+            val night = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+            setBackgroundColor(if (night) 0xFF0E1416.toInt() else 0xFFF2F5F4.toInt())
             webViewClient = PureFeedWebViewClient(this@MainActivity, blocker)
             webChromeClient = chromeClient
             // "Save" on a photo (and any other download the page starts).
