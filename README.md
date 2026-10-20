@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/icon.svg" width="128" height="128" alt="PureFeed icon"></p>
+
 # PureFeed
 
 An Android app for m.facebook.com with ad blocking and FB Purity-style feed

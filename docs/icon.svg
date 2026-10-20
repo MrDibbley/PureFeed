@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 108 108" role="img" aria-label="PureFeed icon">
+  <!-- Same artwork as the launcher icon (app/src/main/res/drawable/ic_launcher_*.xml). -->
+  <rect width="108" height="108" rx="24" fill="#3CC6A8"/>
+  <path d="M36 42h36M36 54h25M36 66h14" stroke="#06231C" stroke-width="7" stroke-linecap="round" fill="none"/>
+</svg>
