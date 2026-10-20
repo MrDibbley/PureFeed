@@ -133,6 +133,16 @@ loads; for example, an image from `www.google.com` fires a `securitypolicyviolat
 `img-src`. So domain blocking (`assets/blocklist.txt`) can't remove ads or
 trackers from the feed, and the DOM filter has to.
 
+### Saving photos
+
+On `/photo.php`, "Save" makes the image a `Blob` (image/jpeg), calls
+`URL.createObjectURL` and clicks an `<a download="img_….jpg">` for it. It doesn't
+revoke the URL. The WebView passes only the `blob:` URL to the app's
+DownloadListener, and the page **can't `fetch()` a `blob:` URL**, because
+Facebook's CSP blocks it. So filter.js keeps each Blob for 60 s after
+`createObjectURL` and `__fbm.readBlob(url)` reads it with a FileReader.
+DownloadHandler.kt saves it to Pictures/PureFeed (tested 2026-10-20).
+
 ## Recommended rule strategy (implemented in `rules.json`)
 
 1. **Find units**: `[data-type="vscroller"] > [data-tracking-duration-id]`.

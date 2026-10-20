@@ -43,6 +43,7 @@ import app.purefeed.ui.UpdateActions
 import app.purefeed.ui.UpdateDialog
 import app.purefeed.ui.UpdatesInfo
 import app.purefeed.ui.theme.PureFeedTheme
+import app.purefeed.web.DownloadHandler
 import app.purefeed.web.FeedEvents
 import app.purefeed.web.FeedWebView
 import app.purefeed.web.PureFeedChromeClient
@@ -107,6 +108,10 @@ class MainActivity : ComponentActivity(), FeedEvents {
                 ),
                 FilterBridge.NAME,
             )
+            // "Save" on a photo (and any other download the page starts).
+            val downloads = DownloadHandler(applicationContext, this)
+            setDownloadListener(downloads)
+            addJavascriptInterface(downloads, DownloadHandler.NAME)
         }
         injector = FilterInjector(webView, assets.open("filter.js").bufferedReader().use { it.readText() })
 

@@ -576,6 +576,47 @@
   }
 
   // -------------------------------------------------------------------------
+  // Saving photos: let Kotlin read the blob behind a download
+  // -------------------------------------------------------------------------
+
+  /**
+   * Facebook's photo "Save" makes the image a Blob, gives it a blob: URL and clicks a
+   * download link for it. The WebView hands Kotlin (DownloadHandler.kt) only the URL,
+   * and the page can't fetch() a blob: URL because Facebook's Content Security Policy
+   * blocks it. So keep each Blob for a minute after createObjectURL, keyed by its URL,
+   * and let readBlob() read it directly with a FileReader (no network, no CSP).
+   * Only Blobs are kept (not the MediaSource objects videos use).
+   */
+  var keptBlobs = new Map();
+
+  function installBlobKeeper() {
+    if (!window.URL || !URL.createObjectURL || URL.createObjectURL.__fbm) return;
+    var originalCreate = URL.createObjectURL;
+    var create = function (obj) {
+      var url = originalCreate.apply(URL, arguments);
+      if (obj instanceof Blob) {
+        keptBlobs.set(url, obj);
+        setTimeout(function () { keptBlobs.delete(url); }, 60000);
+      }
+      return url;
+    };
+    create.__fbm = true;
+    URL.createObjectURL = create;
+  }
+
+  /** The Blob behind a blob: URL as a data: URL, or '' if it isn't one we kept. */
+  function readBlob(url) {
+    return new Promise(function (resolve) {
+      var blob = keptBlobs.get(url);
+      if (!blob) return resolve('');
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { resolve(''); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // -------------------------------------------------------------------------
   // Start on Feeds (chronological feed)
   // -------------------------------------------------------------------------
 
@@ -739,12 +780,16 @@
       }
       applyStyles();
       installAutoplayBlock();
+      installBlobKeeper();
       startObserving();
       rescanAll(changed);
       openFeeds();
     },
 
     dumpDom: dumpDom,
+
+    /** For DownloadHandler.kt: the Blob behind a download's blob: URL, as a data: URL. */
+    readBlob: readBlob,
 
     /** Time spent filtering on this page so far: mutation batches, units tested, ms. */
     stats: function () {
