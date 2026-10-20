@@ -22,10 +22,10 @@ android {
         applicationId = "app.purefeed"
         minSdk = 26
         targetSdk = 37
-        versionCode = 3
+        versionCode = 4
         // -Ppurefeed.versionName=1.0.0-test builds a release that thinks it's older, to test
         // the in-app updater end to end against the real latest release. Never publish one.
-        versionName = providers.gradleProperty("purefeed.versionName").getOrElse("1.0.2")
+        versionName = providers.gradleProperty("purefeed.versionName").getOrElse("1.0.3")
     }
 
     signingConfigs {
