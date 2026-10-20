@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -43,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import app.purefeed.R
+import app.purefeed.web.SaveStatus
 
 /** UI state driven by WebView callbacks. */
 @Stable
@@ -55,6 +57,8 @@ class FeedState {
     var ruleLabels by mutableStateOf(emptyMap<String, String>())
     /** Tracker requests blocked on the current page. */
     var blockedRequests by mutableIntStateOf(0)
+    /** "Saving photo…" / "Saved to …" pill, or null. */
+    var saveStatus by mutableStateOf<SaveStatus?>(null)
 }
 
 /** Actions offered by the filter button's menu. */
@@ -100,6 +104,10 @@ fun FeedScreen(webView: WebView, state: FeedState, debug: Boolean, version: Stri
                 modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
                 color = MaterialTheme.colorScheme.primary,
             )
+        }
+
+        state.saveStatus?.let { status ->
+            SavePill(status, Modifier.align(Alignment.BottomCenter).padding(bottom = 64.dp))
         }
 
         FilterButton(
@@ -166,6 +174,30 @@ private fun FilterButton(state: FeedState, debug: Boolean, version: String, acti
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
+        }
+    }
+}
+
+/** Feedback while a photo saves: spinner + "Saving photo…", then the result. */
+@Composable
+private fun SavePill(status: SaveStatus, modifier: Modifier) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.inverseSurface,
+        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+        shadowElevation = 4.dp,
+        modifier = modifier,
+    ) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (status.busy) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.inverseOnSurface,
+                )
+                Box(Modifier.width(10.dp))
+            }
+            Text(status.text, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

@@ -14,6 +14,7 @@
  *   this file ──PureFeedBridge.onCounts(json)──▶ Kotlin   (hidden-post counter)
  *   this file ──PureFeedBridge.onDomChunk(...)──▶ Kotlin  ("Dump DOM" debug action)
  *   this file ──PureFeedBridge.onFeedsOpened()──▶ Kotlin   (so Back can skip the menu)
+ *   this file ──PureFeedBridge.onSaveStarted()──▶ Kotlin   ("Saving photo…" as soon as Save is tapped)
  *
  * It also has one job that isn't filtering: "Start on Feeds" (see openFeeds() below),
  * which switches the ranked home feed to Facebook's chronological Feeds screen.
@@ -177,6 +178,7 @@
       noAutoplay: !!settings.noAutoplay,
       videoBox: (rules.video && rules.video.containerSelector) || '[data-mcomponent="MVideo"]',
       feeds: rules.feeds || null,
+      photoSave: rules.photoSave || { buttonSelector: '[aria-label="Save"]', pathPattern: '^/photo', timeoutMs: 30000 },
       startOnFeeds: !!settings.startOnFeeds,
       feedsFilter: settings.feedsFilter || 'all'
     };
@@ -588,6 +590,7 @@
    * Only Blobs are kept (not the MediaSource objects videos use).
    */
   var keptBlobs = new Map();
+  var saveBusyUntil = 0;   // a photo save is under way until then (see installSaveWatcher)
 
   function installBlobKeeper() {
     if (!window.URL || !URL.createObjectURL || URL.createObjectURL.__fbm) return;
@@ -596,12 +599,38 @@
       var url = originalCreate.apply(URL, arguments);
       if (obj instanceof Blob) {
         keptBlobs.set(url, obj);
+        saveBusyUntil = 0;   // Facebook has produced the file; the save is Kotlin's now
         setTimeout(function () { keptBlobs.delete(url); }, 60000);
       }
       return url;
     };
     create.__fbm = true;
     URL.createObjectURL = create;
+  }
+
+  /**
+   * Facebook takes about 4–5 s between a tap on Save (photo ⋯ menu) and producing the
+   * file, while it fetches the full-size image. With no feedback people tap again, and
+   * each tap starts another fetch. So: tell Kotlin the moment Save is tapped (it shows
+   * "Saving photo…"), and swallow further taps until the file arrives or
+   * photoSave.timeoutMs passes. Selector and page pattern: rules.json "photoSave".
+   */
+  function installSaveWatcher() {
+    if (window.__fbmSaveWatcher) return;
+    window.__fbmSaveWatcher = true;
+    document.addEventListener('click', function (ev) {
+      var cfg = compiled && compiled.photoSave;
+      if (!cfg || !new RegExp(cfg.pathPattern).test(location.pathname)) return;
+      if (!ev.target.closest || !ev.target.closest(cfg.buttonSelector)) return;
+      if (Date.now() < saveBusyUntil) {
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        return;
+      }
+      saveBusyUntil = Date.now() + (cfg.timeoutMs || 30000);
+      var bridge = window[BRIDGE];
+      if (bridge && bridge.onSaveStarted) bridge.onSaveStarted();
+    }, true);
   }
 
   /** The Blob behind a blob: URL as a data: URL, or '' if it isn't one we kept. */
@@ -781,6 +810,7 @@
       applyStyles();
       installAutoplayBlock();
       installBlobKeeper();
+      installSaveWatcher();
       startObserving();
       rescanAll(changed);
       openFeeds();

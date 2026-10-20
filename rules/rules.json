@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-18",
+  "updated": "2026-10-20",
   "notes": "Detection data for assets/filter.js. See docs/selectors.md for how each signal was found. All strings are matched case-insensitively after icon glyphs are stripped. Bump \"updated\" on every change (e.g. 2026-10-17.2): the app ignores downloaded files older than its built-in copy.",
 
   "units": {
@@ -87,6 +87,13 @@
   "video": {
     "notes": "With autoplay blocked, a paused feed video's poster is set to the thumbnail <img> inside this container.",
     "containerSelector": "[data-mcomponent=\"MVideo\"]"
+  },
+
+  "photoSave": {
+    "notes": "The Save item in a photo's menu. Tapping it shows \"Saving photo…\" at once; repeat taps are ignored until the file arrives.",
+    "buttonSelector": "[aria-label=\"Save\"]",
+    "pathPattern": "^/photo",
+    "timeoutMs": 30000
   },
 
   "userRules": {

@@ -100,18 +100,19 @@ class MainActivity : ComponentActivity(), FeedEvents {
         webView = FeedWebView.create(this).apply {
             webViewClient = PureFeedWebViewClient(this@MainActivity, blocker)
             webChromeClient = chromeClient
+            // "Save" on a photo (and any other download the page starts).
+            val downloads = DownloadHandler(applicationContext, this) { feedState.saveStatus = it }
+            setDownloadListener(downloads)
+            addJavascriptInterface(downloads, DownloadHandler.NAME)
             addJavascriptInterface(
                 FilterBridge(
                     onCounts = { feedState.hiddenCounts = it },
                     onDomChunk = { id, index, total, chunk -> dumper.onChunk(id, index, total, chunk, ::shareDump) },
                     onFeedsOpened = { autoFeedsIndex = webView.copyBackForwardList().currentIndex },
+                    onSaveStarted = downloads::saveStarted,
                 ),
                 FilterBridge.NAME,
             )
-            // "Save" on a photo (and any other download the page starts).
-            val downloads = DownloadHandler(applicationContext, this)
-            setDownloadListener(downloads)
-            addJavascriptInterface(downloads, DownloadHandler.NAME)
         }
         injector = FilterInjector(webView, assets.open("filter.js").bufferedReader().use { it.readText() })
 

@@ -16,7 +16,6 @@ import android.webkit.DownloadListener
 import android.webkit.JavascriptInterface
 import android.webkit.URLUtil
 import android.webkit.WebView
-import android.widget.Toast
 import java.io.File
 
 /**
@@ -33,9 +32,36 @@ import java.io.File
  * On Android 8–9 the public folders need a storage permission this app doesn't ask for,
  * so files go to the app's own folder there (Android/data/app.purefeed/files/…).
  */
-class DownloadHandler(private val context: Context, private val webView: WebView) : DownloadListener {
+/** What the feed screen shows while saving: a spinner while [busy], else a short result. */
+data class SaveStatus(val text: String, val busy: Boolean)
+
+class DownloadHandler(
+    private val context: Context,
+    private val webView: WebView,
+    private val onStatus: (SaveStatus?) -> Unit,
+) : DownloadListener {
 
     private val main = Handler(Looper.getMainLooper())
+    private val clearStatus = Runnable { onStatus(null) }
+    private val saveTimedOut = Runnable { fail("Facebook didn't send the photo. Try again.") }
+
+    /** Save was tapped in a photo's menu (from filter.js); Facebook needs a few seconds. */
+    fun saveStarted() {
+        show(SaveStatus("Saving photo…", busy = true))
+        main.removeCallbacks(saveTimedOut)
+        main.postDelayed(saveTimedOut, 35_000)
+    }
+
+    private fun show(status: SaveStatus, clearAfterMs: Long = 0) = main.post {
+        main.removeCallbacks(clearStatus)
+        if (!status.busy) main.removeCallbacks(saveTimedOut)
+        onStatus(status)
+        if (clearAfterMs > 0) main.postDelayed(clearStatus, clearAfterMs)
+    }
+
+    private fun done(text: String) { show(SaveStatus(text, busy = false), 2_500) }
+
+    private fun fail(text: String) { show(SaveStatus(text, busy = false), 4_000) }
     /**
      * blob: downloads we asked the page for (URL → file name). Bytes from the page are
      * only accepted for these. Facebook can start several at once.
@@ -61,7 +87,7 @@ class DownloadHandler(private val context: Context, private val webView: WebView
             url.startsWith("http://") || url.startsWith("https://") -> enqueue(url, userAgent, mimeType, name)
             url.startsWith("data:") -> saveDataUrl(url, name)
             url.startsWith("blob:") -> fetchBlob(url, name)
-            else -> toast("Can't save this kind of link")
+            else -> fail("Can't save this kind of link")
         }
     }
 
@@ -82,10 +108,10 @@ class DownloadHandler(private val context: Context, private val webView: WebView
         }
         try {
             (context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).enqueue(request)
-            toast(if (image) "Saving photo to Pictures/PureFeed" else "Downloading $name")
+            done(if (image) "Saving photo to Pictures/PureFeed" else "Downloading $name")
         } catch (e: Exception) {
             Log.w(TAG, "DownloadManager refused: ${e.message}")
-            toast("Couldn't save: ${e.message}")
+            fail("Couldn't save: ${e.message}")
         }
     }
 
@@ -109,7 +135,7 @@ class DownloadHandler(private val context: Context, private val webView: WebView
         val name = pendingBlobs.remove(url) ?: return
         if (dataUrl.isEmpty()) {
             Log.w(TAG, "Page couldn't read blob for download")
-            toast("Couldn't read the file from the page")
+            fail("Couldn't read the photo from the page")
             return
         }
         main.post { saveDataUrl(dataUrl, name) }
@@ -122,10 +148,10 @@ class DownloadHandler(private val context: Context, private val webView: WebView
             if (header.endsWith(";base64")) Base64.decode(dataUrl.substringAfter(','), Base64.DEFAULT)
             else Uri.decode(dataUrl.substringAfter(',')).toByteArray()
         } catch (e: IllegalArgumentException) {
-            toast("Couldn't read the file")
+            fail("Couldn't read the file")
             return
         }
-        if (bytes.size > MAX_BYTES) return toast("File too large to save")
+        if (bytes.size > MAX_BYTES) return fail("File too large to save")
         val hash = java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
         val now = System.currentTimeMillis()
         recentSaves.entries.removeAll { now - it.value > 30_000 }
@@ -138,10 +164,10 @@ class DownloadHandler(private val context: Context, private val webView: WebView
         val name = if (ext != null && !fallbackName.endsWith(".$ext")) fallbackName.substringBeforeLast('.') + ".$ext" else fallbackName
         try {
             val where = writeBytes(bytes, name, mime)
-            toast("Saved to $where")
+            done("Saved to $where")
         } catch (e: Exception) {
             Log.w(TAG, "Save failed: ${e.message}")
-            toast("Couldn't save: ${e.message}")
+            fail("Couldn't save: ${e.message}")
         }
     }
 
@@ -168,9 +194,6 @@ class DownloadHandler(private val context: Context, private val webView: WebView
     private fun isImage(mime: String?, name: String) =
         mime?.startsWith("image/") == true || name.substringAfterLast('.').lowercase() in setOf("jpg", "jpeg", "png", "webp", "gif", "heic")
 
-    private fun toast(msg: String) {
-        main.post { Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() }
-    }
 
     private fun quote(s: String) = "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"
 

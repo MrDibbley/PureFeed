@@ -143,6 +143,12 @@ Facebook's CSP blocks it. So filter.js keeps each Blob for 60 s after
 `createObjectURL` and `__fbm.readBlob(url)` reads it with a FileReader.
 DownloadHandler.kt saves it to Pictures/PureFeed (tested 2026-10-20).
 
+The Save item is in the photo's ⋯ menu (`aria-label="Menu"`): a bottom sheet item
+with `aria-label="Save"` and `data-action-id`. Facebook takes about 4.5 s from that
+tap to `createObjectURL` while it fetches the full-size image, so filter.js reports
+the tap at once ("Saving photo…") and swallows repeat taps until the Blob appears
+(rules.json `photoSave`).
+
 ## Recommended rule strategy (implemented in `rules.json`)
 
 1. **Find units**: `[data-type="vscroller"] > [data-tracking-duration-id]`.

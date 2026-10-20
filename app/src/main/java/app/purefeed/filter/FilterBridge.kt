@@ -19,6 +19,7 @@ class FilterBridge(
     private val onCounts: (Map<String, Int>) -> Unit,
     private val onDomChunk: (requestId: String, index: Int, total: Int, chunk: String) -> Unit,
     private val onFeedsOpened: () -> Unit,
+    private val onSaveStarted: () -> Unit,
 ) {
     private val main = Handler(Looper.getMainLooper())
 
@@ -39,6 +40,12 @@ class FilterBridge(
     @JavascriptInterface
     fun onFeedsOpened() {
         main.post { onFeedsOpened.invoke() }
+    }
+
+    /** The user tapped Save on a photo; Facebook takes a few seconds to produce the file. */
+    @JavascriptInterface
+    fun onSaveStarted() {
+        main.post { onSaveStarted.invoke() }
     }
 
     companion object {
