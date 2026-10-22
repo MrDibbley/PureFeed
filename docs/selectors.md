@@ -89,6 +89,13 @@ index 1 is the subtitle line, and index 2–3 hold the "•" and the inline acti
 | "Get Facebook for Android / Browse faster" top bar | Not present on the logged-in feed. Seen only on the logged-out login page. | Low priority |
 | `#…` "This browser is not supported" | A fixed div with 0×0 size, always present | Ignore |
 
+### Related groups (post pages)
+
+On a post's own page (`/story.php`), a "Related groups" box with Join buttons is a
+**feed-list child that isn't a post** (no tracking id), like the Stories tray, so it's a
+`"kind": "section"` rule. It uses `"enabledWith": "groups"`: on whenever Group
+suggestions is on, with no switch of its own (2026-10-22).
+
 ### Stories tray (home feed)
 
 A vscroller child **without** `data-tracking-duration-id`, above the first post,

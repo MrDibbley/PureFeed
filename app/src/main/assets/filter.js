@@ -194,7 +194,9 @@
     Object.keys(rules.rules).forEach(function (id) {
       var rule = rules.rules[id];
       c.colors[id] = rule.color;
-      if (!enabled[id]) return;
+      // "enabledWith": switched on by another rule's setting (e.g. Related groups under
+      // posts follows Group suggestions), so new rules don't need a new app switch.
+      if (!enabled[id] && !(rule.enabledWith && enabled[rule.enabledWith])) return;
       if (rule.kind === 'fixed') {
         c.fixedRules.push({
           id: id,

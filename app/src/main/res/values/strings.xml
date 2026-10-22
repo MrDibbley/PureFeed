@@ -75,7 +75,7 @@
     <string name="rule_suggested">Suggested posts</string>
     <string name="rule_suggested_desc">Posts from pages and people you don\'t follow, with a \"Follow\" button</string>
     <string name="rule_groups">Group suggestions</string>
-    <string name="rule_groups_desc">Posts from groups you\'re not in, with a \"Join\" button</string>
+    <string name="rule_groups_desc">Posts from groups you\'re not in, with a \"Join\" button, and \"Related groups\" under posts</string>
     <string name="rule_reels">Reels</string>
     <string name="rule_reels_desc">The Reels carousel in the feed</string>
     <string name="rule_pymk">People you may know</string>
