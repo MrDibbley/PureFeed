@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-10-22",
+  "updated": "2026-10-22.2",
   "notes": "Detection data for assets/filter.js. See docs/selectors.md for how each signal was found. All strings are matched case-insensitively after icon glyphs are stripped. Bump \"updated\" on every change (e.g. 2026-10-17.2): the app ignores downloaded files older than its built-in copy.",
 
   "units": {
@@ -63,8 +63,8 @@
       "color": "#8E24AA",
       "kind": "section",
       "enabledWith": "groups",
-      "notes": "Box under a post on its own page (/story.php) with Join buttons; a feed-list child, not a post.",
-      "match": { "anyText": ["Related groups", "Suggested groups"] }
+      "notes": "Box under a post on its own page (/story.php) with Join buttons; a feed-list child, not a post. Matched on the block's header only: on posts with comments the box can share a block with the comments, and anyText hid them (2026-10-22).",
+      "match": { "headerText": ["Related groups", "Suggested groups"] }
     },
     "appPrompts": {
       "label": "App prompt",
