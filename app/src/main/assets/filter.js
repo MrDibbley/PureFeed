@@ -174,6 +174,7 @@
       headerLimit: rules.text.headerTextLimit || 5,
       unitRules: [],    // tested against each feed unit, in order; first match wins
       sectionRules: [], // tested against feed-list children that AREN'T posts (e.g. the Stories tray)
+      blockRules: [],   // a box found by its heading, inside a larger block (see scanBlocks)
       fixedRules: [],   // page-level: hide the position:fixed container around some text
       colors: {},       // rule id → colour, for debug outlines
       debug: !!settings.debug,
@@ -203,6 +204,13 @@
           label: rule.label,
           texts: (rule.match.anyText || []).map(function (t) { return t.toLowerCase(); }),
           maxDepth: rule.maxAncestorDepth || 10
+        });
+      } else if (rule.kind === 'block') {
+        c.blockRules.push({
+          id: id,
+          label: rule.label,
+          headings: (rule.match.blockHeading || []).map(function (t) { return t.toLowerCase(); }),
+          maxDepth: rule.maxAncestorDepth || 8
         });
       } else if (rule.kind === 'section') {
         c.sectionRules.push({ id: id, label: rule.label, test: compileMatchers(rule.match) });
@@ -418,7 +426,42 @@
    * walk up to the nearest position:fixed ancestor, and hide that. Uses
    * getComputedStyle, so it runs debounced rather than on every mutation.
    */
+  /**
+   * Block rules: hide a box identified by its heading (e.g. "Related groups" under a
+   * post) without hiding what shares its feed-list block (the post's comments). From the
+   * heading, walk up while the heading is still the container's first text; the last
+   * such container is the box. Stops at the feed list. Rules use match.blockHeading, a
+   * key older app versions don't know, so for them the rule never matches.
+   */
+  function firstText(el) {
+    var els = el.querySelectorAll(compiled.textSelector);
+    for (var i = 0; i < els.length; i++) {
+      var t = clean(els[i].textContent);
+      if (t) return t;
+    }
+    return '';
+  }
+
+  function scanBlocks() {
+    if (!compiled.blockRules.length) return;
+    var textEls = document.querySelectorAll(compiled.textSelector);
+    compiled.blockRules.forEach(function (rule) {
+      for (var i = 0; i < textEls.length; i++) {
+        var heading = clean(textEls[i].textContent);
+        if (rule.headings.indexOf(heading) < 0) continue;
+        var box = textEls[i];
+        for (var d = 0; d < rule.maxDepth; d++) {
+          var parent = box.parentElement;
+          if (!parent || parent.matches(compiled.parentSelector) || firstText(parent) !== heading) break;
+          box = parent;
+        }
+        if (box !== textEls[i] && !box.closest('[' + ATTR_MATCH + ']')) mark(box, rule);
+      }
+    });
+  }
+
   function scanFixed() {
+    scanBlocks();
     markChrome();
     reportNav();
     if (!compiled.fixedRules.length) return;

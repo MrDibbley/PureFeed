@@ -96,6 +96,13 @@ On a post's own page (`/story.php`), a "Related groups" box with Join buttons is
 `"kind": "section"` rule. It uses `"enabledWith": "groups"`: on whenever Group
 suggestions is on, with no switch of its own (2026-10-22).
 
+On posts **with comments**, the box sits inside the same feed-list block as the
+comments (block 582 px: comments with Reply/Like, then the 269 px box), so a section
+rule hid the comments too. Now the section rule matches the block header only, and a
+`"kind": "block"` rule (`match.blockHeading`) walks up from the heading while it is
+still the container's first text, which stops at the box. Block rules need app 1.0.6+;
+older versions see an unknown match key and never match (2026-10-22).
+
 ### Stories tray (home feed)
 
 A vscroller child **without** `data-tracking-duration-id`, above the first post,
