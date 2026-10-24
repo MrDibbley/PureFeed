@@ -160,3 +160,20 @@ unsigned APK instead.
    The next APK build bundles the same file as its offline fallback.
 
 FB Purity (fbpurity.com) inspired the feature set. None of its code is used.
+
+## Licence
+
+PureFeed's code is licensed under the **GNU General Public License v3.0**
+([`LICENSE`](LICENSE)). You can use, study, change and share it. If you distribute
+a modified version, it must also be GPL-3.0 and come with its source code, so
+anyone can check what an app that handles their Facebook login is doing.
+
+The detection rules in [`rules/rules.json`](rules/rules.json) are dedicated to the
+public domain under **CC0 1.0** ([`rules/LICENSE`](rules/LICENSE)), so other
+ad-blocking and filtering projects can reuse them freely.
+
+The **PureFeed name and icon** aren't covered by either licence. Forks are welcome,
+but please give them their own name and icon so people can tell them apart.
+
+Copyright (C) 2026 MrDibbley.
+
